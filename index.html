@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIツール比較ノート｜Day05 秘密の図書館診断</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+      color: #44384f;
+      background:
+        radial-gradient(circle at top left, rgba(255, 230, 245, 0.95), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(226, 238, 255, 0.95), transparent 38%),
+        linear-gradient(135deg, #fff7fb, #f7fbff, #eef7ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 30px;
+      padding: 34px;
+      box-shadow: 0 20px 50px rgba(120, 90, 150, 0.16);
+      backdrop-filter: blur(8px);
+    }
+
+    .label {
+      width: fit-content;
+      margin: 0 auto 14px;
+      padding: 7px 15px;
+      border-radius: 999px;
+      background: #f0e5ff;
+      color: #7d5bb8;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.04em;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: 28px;
+      line-height: 1.45;
+      letter-spacing: 0.03em;
+    }
+
+    .subtitle {
+      margin: 18px auto 28px;
+      max-width: 620px;
+      text-align: center;
+      line-height: 1.8;
+      font-size: 15px;
+      color: #665a70;
+    }
+
+    .day-box {
+      margin: 26px 0;
+      padding: 22px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(255, 246, 252, 0.95), rgba(243, 248, 255, 0.95));
+      border: 1px solid rgba(230, 220, 245, 0.95);
+    }
+
+    .day-title {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #8a6cb6;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .diagnosis-title {
+      margin: 0;
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.5;
+    }
+
+    .buttons {
+      display: grid;
+      gap: 16px;
+      margin-top: 26px;
+    }
+
+    .button {
+      display: block;
+      padding: 18px 20px;
+      border-radius: 18px;
+      text-decoration: none;
+      background: #ffffff;
+      border: 1px solid #eadff6;
+      color: #44384f;
+      box-shadow: 0 8px 22px rgba(120, 90, 150, 0.10);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(120, 90, 150, 0.18);
+      border-color: #cbb5ea;
+    }
+
+    .ai-name {
+      display: block;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .ai-desc {
+      display: block;
+      font-size: 13px;
+      color: #766a80;
+      line-height: 1.6;
+    }
+
+    .note {
+      margin-top: 26px;
+      font-size: 13px;
+      color: #81758a;
+      line-height: 1.8;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 12px;
+      color: #9a8aa8;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px;
+      }
+
+      .card {
+        padding: 26px 20px;
+        border-radius: 24px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .diagnosis-title {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <div class="label">AIツール比較ノート</div>
+
+      <h1>3つのAIで作った診断アプリを比較</h1>
+
+      <p class="subtitle">
+        ChatGPT・Claude・Geminiに同じテーマで診断アプリを作ってもらいました。<br />
+        それぞれの表現、雰囲気、結果の違いを実際に試して比較できます。
+      </p>
+
+      <div class="day-box">
+        <p class="day-title">Day05</p>
+        <h2 class="diagnosis-title">あなたの心の中にある<br />秘密の図書館診断</h2>
+      </div>
+
+      <div class="buttons">
+        <a class="button" href="chatgpt-secret-library.html">
+          <span class="ai-name">🤖 ChatGPT版を試す</span>
+          <span class="ai-desc">構成や説明の分かりやすさを確認できます。</span>
+        </a>
+
+        <a class="button" href="claude-secret-library.html">
+          <span class="ai-name">📘 Claude版を試す</span>
+          <span class="ai-desc">文章表現や世界観づくりの違いを確認できます。</span>
+        </a>
+
+        <a class="button" href="gemini-secret-library.html">
+          <span class="ai-name">✨ Gemini版を試す</span>
+          <span class="ai-desc">見せ方や雰囲気の違いを確認できます。</span>
+        </a>
+      </div>
+
+      <p class="note">
+        ※このページは、AI初心者による比較実験ノートの一部です。<br />
+        診断結果は娯楽・観察用としてお楽しみください。
+      </p>
+    </section>
+
+    <footer>
+      AI Tools Comparison Note / Day05
+    </footer>
+  </main>
+</body>
+</html>
