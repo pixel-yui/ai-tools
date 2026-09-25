@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>線画・ぬりえビルダー | ステップ式プロンプトビルダー</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --panel-soft: #f1f5f9;
+      --border: #e2e8f0;
+      --ink: #1e293b;
+      --ink-soft: #64748b;
+      --accent: #6366f1;
+      --accent-soft: #eef2ff;
+      --accent-hover: #4f46e5;
+      --radius: 12px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-width: 1000px; overflow-x: auto;
+      background: var(--bg);
+      font-family: 'Helvetica Neue', 'Arial', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .back-link { color: var(--ink-soft); text-decoration: none; font-size: 14px; }
+    .back-link:hover { color: var(--accent); }
+    .header-title { font-size: 18px; font-weight: 900; }
+    .header-subtitle { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+    .btn-random-header {
+      background: #f59e0b; color: white; border: none; border-radius: 8px;
+      padding: 9px 18px; font-size: 14px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-random-header:hover { background: #d97706; transform: scale(1.04); }
+
+    /* ── App Layout & Sidebar ── */
+    .app-layout {
+      display: flex;
+      max-width: 1100px;
+      margin: 30px auto 0;
+      padding: 0 20px;
+      align-items: flex-start;
+    }
+    .progress-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      margin-right: 32px;
+      position: sticky;
+      top: 90px;
+      box-shadow: var(--shadow);
+    }
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--ink-soft);
+      padding: 0 4px;
+      margin-bottom: 16px;
+      letter-spacing: 0.1em;
+    }
+    .progress-labels {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 10px 100px;
+    }
+    .combo-counter { text-align: center; margin-bottom: 28px; }
+    .combo-count { font-size: 13px; color: var(--ink-soft); }
+    .combo-count strong { font-weight: 900; color: var(--accent); font-size: 16px; }
+
+    /* ── Step screens ── */
+    .step-screen { display: none; }
+    .step-screen.active { display: block; }
+    .step-header { text-align: center; margin-bottom: 32px; }
+    .step-number { font-size: 11px; font-weight: 800; color: var(--accent); letter-spacing: 0.12em; margin-bottom: 10px; }
+    .step-question { font-size: 28px; font-weight: 900; color: var(--ink); margin-bottom: 8px; line-height: 1.3; }
+    .step-desc { font-size: 14px; color: var(--ink-soft); line-height: 1.6; }
+
+    /* ── Option cards ── */
+    .options-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .option-card {
+      background: var(--panel); border: 2px solid var(--border); border-radius: var(--radius);
+      padding: 18px 16px; cursor: pointer; transition: all 0.18s ease; text-align: left; position: relative;
+    }
+    .option-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .option-card.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+    .option-card.selected::after {
+      content: '✓'; position: absolute; top: 10px; right: 12px;
+      background: var(--accent); color: white; width: 20px; height: 20px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900;
+    }
+    .option-emoji { font-size: 30px; margin-bottom: 10px; display: block; line-height: 1; }
+    .option-label { font-size: 15px; font-weight: 800; color: var(--ink); margin-bottom: 5px; }
+    .option-desc { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+    .option-card.convert-card { border: 2px dashed var(--accent); background: linear-gradient(135deg, #fff8f0 0%, #fff 100%); }
+    .opt-badge-convert { display:inline-block; font-size:10px; background:var(--accent); color:#fff; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; font-weight:600; letter-spacing:0.03em; }
+    .convert-notice { background: linear-gradient(135deg, #fff3e0, #fffde7); border: 1.5px solid #ffb74d; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 14px; line-height: 1.7; }
+    .convert-notice strong { color: #e65100; font-size: 15px; }
+    .convert-notice ol { margin: 8px 0 0 18px; padding: 0; }
+    .convert-notice li { margin-bottom: 4px; }
+
+    /* ── Convert Screen ── */
+    #convertScreen { display: none; }
+    .convert-screen-header { text-align: center; margin-bottom: 28px; }
+    .convert-screen-title { font-size: 26px; font-weight: 900; margin-bottom: 8px; }
+    .convert-screen-subtitle { font-size: 13px; color: var(--ink-soft); }
+    .convert-complexity { background: var(--panel); border-radius: 14px; padding: 20px; margin-bottom: 22px; border: 1px solid var(--border); }
+    .convert-section-title { font-size: 14px; font-weight: 800; margin-bottom: 14px; color: var(--ink); }
+    .convert-opts { display: flex; gap: 10px; }
+    .convert-opt { flex: 1; border: 2px solid var(--border); border-radius: 10px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .convert-opt:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .convert-opt.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    .convert-opt-emoji { font-size: 26px; display: block; margin-bottom: 6px; }
+    .convert-opt-label { font-size: 14px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+    .convert-opt-desc { font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
+    .convert-howto { background: linear-gradient(135deg, #fff8f0, #fffde7); border: 1.5px solid #ffb74d; border-radius: 12px; padding: 18px 20px; margin-bottom: 22px; }
+    .convert-howto-title { font-size: 15px; font-weight: 900; color: #e65100; margin-bottom: 10px; }
+    .convert-howto ol { margin: 0 0 0 18px; padding: 0; font-size: 14px; line-height: 2; }
+    .convert-howto li strong { color: var(--accent); }
+    .convert-tip { margin-top: 10px; font-size: 12px; color: #7c6d00; background: rgba(255,230,0,0.15); padding: 8px 12px; border-radius: 6px; }
+
+    /* ── Nav buttons ── */
+    .nav-buttons { display: flex; gap: 12px; justify-content: center; align-items: center; }
+    .step-addon-wrap {
+      display: flex; align-items: center; gap: 10px; background: var(--panel);
+      border: 1.5px dashed var(--border); border-radius: 8px; padding: 9px 14px; margin-bottom: 20px;
+    }
+    .step-addon-label { font-size: 12px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
+    .step-addon-input { flex: 1; border: none; background: transparent; font-size: 13px; color: var(--ink); outline: none; min-width: 0; }
+    .step-addon-input::placeholder { color: #94a3b8; }
+    .btn-suggest {
+      width: 100%; padding: 9px 14px; border: 1.5px dashed var(--accent);
+      border-radius: 8px; background: transparent; color: var(--accent);
+      font-size: 12px; font-weight: 800; cursor: pointer; transition: all 0.2s;
+      text-align: left; margin-bottom: 8px;
+    }
+    .btn-suggest:hover { background: var(--accent-soft); }
+    .suggest-panel {
+      background: var(--panel); border: 1.5px solid var(--accent); border-radius: 10px;
+      padding: 12px 14px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+      animation: fadeIn 0.15s ease;
+    }
+    .suggest-panel-label { font-size: 10px; color: var(--ink-soft); margin-bottom: 8px; font-weight: 700; letter-spacing: 0.04em; }
+    .suggest-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .suggest-chip { background: var(--accent-soft); border: 1px solid var(--accent); color: var(--accent); border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; user-select: none; }
+    .suggest-chip:hover { background: var(--accent); color: white; }
+    .suggestion-panel { background:white; border:1.5px solid var(--accent); border-radius:10px; padding:10px 12px; margin-top:7px; box-shadow:0 4px 16px rgba(0,0,0,0.13); animation:fadeIn 0.15s ease; }
+    .suggestion-panel-label { font-size:10px; color:#888; margin-bottom:7px; font-weight:700; letter-spacing:0.04em; }
+    .suggestion-chips { display:flex; flex-wrap:wrap; gap:5px; }
+    .suggestion-chip { background:var(--accent-soft); border:1px solid var(--accent); color:var(--accent); border-radius:20px; padding:3px 10px; font-size:11px; cursor:pointer; transition:all 0.15s; user-select:none; }
+    .suggestion-chip:hover { background:var(--accent); color:white; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    .btn { border: none; border-radius: 10px; padding: 13px 28px; font-size: 16px; font-weight: 800; cursor: pointer; transition: all 0.2s; }
+    .btn-back { background: var(--panel); border: 2px solid var(--border); color: var(--ink-soft); }
+    .btn-back:hover { background: var(--panel-soft); }
+    .btn-next { background: var(--accent); color: white; min-width: 160px; }
+    .btn-next:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-next:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; transform: none; }
+
+    /* ── Dictionary button ── */
+    .btn-open-dict {
+      width: 100%; padding: 14px; border: 2px dashed var(--accent);
+      border-radius: var(--radius); background: var(--accent-soft);
+      color: var(--accent); font-size: 14px; font-weight: 800;
+      cursor: pointer; transition: all 0.2s; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-open-dict:hover { background: #e0e7ff; transform: translateY(-1px); }
+    .btn-open-dict.selected { border-style: solid; background: #e0e7ff; }
+
+    /* ── Result ── */
+    #resultScreen { display: none; }
+    .result-header { text-align: center; margin-bottom: 28px; }
+    .result-title { font-size: 30px; font-weight: 900; margin-bottom: 8px; }
+    .result-subtitle { font-size: 13px; color: var(--ink-soft); }
+    .selected-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 16px; background: var(--panel); border-radius: var(--radius); border: 1px solid var(--border); }
+    .summary-tag { background: var(--accent-soft); border: 1px solid rgba(99,102,241,0.25); color: var(--ink); padding: 5px 13px; border-radius: 99px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+    .summary-tag:hover { background: #c7d2fe; }
+    .prompt-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+    .prompt-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .prompt-box-title { font-size: 14px; font-weight: 800; }
+    .btn-copy { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-copy:hover { background: var(--accent-hover); }
+    .btn-copy.copied { background: #8b5cf6; }
+    .prompt-text { font-size: 13px; line-height: 1.75; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; word-break: break-all; white-space: pre-wrap; color: #1e3a5f; }
+    .negative-text { color: #7f1d1d; background: #fff8f8; border-color: #fca5a5; }
+
+    /* Tips */
+    .tips-box { background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 24px; }
+    .tips-title { font-size: 13px; font-weight: 800; color: #5b21b6; margin-bottom: 8px; }
+    .tips-text { font-size: 13px; color: #4c1d95; line-height: 1.7; white-space: pre-wrap; }
+
+    /* ── Japanese Explanation ── */
+    .jp-explain { border: 1.5px solid #ddd6fe; border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+    .jp-explain summary {
+      background: var(--accent-soft); padding: 14px 18px; cursor: pointer;
+      font-size: 14px; font-weight: 800; color: var(--accent);
+      list-style: none; display: flex; align-items: center; gap: 8px; user-select: none;
+    }
+    .jp-explain summary::-webkit-details-marker { display: none; }
+    .jp-explain summary::after { content: '▼'; margin-left: auto; font-size: 10px; transition: transform 0.2s; }
+    .jp-explain[open] summary::after { transform: rotate(180deg); }
+    .jp-explain-body { padding: 16px 18px; }
+    .jp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .jp-table tr { border-bottom: 1px solid var(--border); }
+    .jp-table tr:last-child { border-bottom: none; }
+    .jp-label { padding: 10px 12px 10px 0; color: var(--ink-soft); font-weight: 700; white-space: nowrap; vertical-align: top; width: 130px; }
+    .jp-value { padding: 10px 0; line-height: 1.8; }
+    .jp-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; margin: 2px 4px 2px 0; font-size: 12px; }
+    .jp-chip small { color: var(--ink-soft); }
+    .jp-chip.addon { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .jp-neg-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .jp-neg-title { font-size: 12px; font-weight: 800; color: #ef4444; margin-bottom: 10px; }
+    .jp-neg-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .jp-neg-tag { background: #fff5f5; border: 1px solid #fecaca; border-radius: 99px; padding: 3px 10px; font-size: 12px; color: #dc2626; }
+
+    /* Result actions */
+    .result-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-restart { background: var(--panel); border: 2px solid var(--border); color: var(--ink-soft); }
+    .btn-restart:hover { background: var(--panel-soft); }
+    .btn-another { background: #8b5cf6; color: white; }
+    .btn-another:hover { background: #7c3aed; transform: translateY(-1px); }
+    .btn-edit-step { background: var(--panel); border: 2px solid var(--accent); color: var(--accent); font-weight: 800; }
+    .btn-edit-step:hover { background: var(--accent-soft); }
+
+    /* ── Dictionary Modal ── */
+    .style-dict-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .style-dict-panel {
+      background: var(--panel); border-radius: var(--radius);
+      width: 100%; max-width: 720px; max-height: 82vh;
+      overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.28);
+    }
+    .style-dict-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--panel-soft);
+    }
+    .style-dict-title { font-size: 16px; font-weight: 900; }
+    .btn-close-dict {
+      background: none; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 14px; cursor: pointer; color: var(--ink-soft); padding: 4px 10px; transition: all 0.15s;
+    }
+    .btn-close-dict:hover { background: var(--border); color: var(--ink); }
+    .style-dict-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      background: var(--panel-soft); overflow-x: auto; flex-shrink: 0;
+    }
+    .dict-tab {
+      padding: 10px 18px; border: none; background: none;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      color: var(--ink-soft); white-space: nowrap;
+      border-bottom: 3px solid transparent; transition: all 0.15s;
+    }
+    .dict-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .style-dict-body { overflow-y: auto; flex: 1; padding: 16px; }
+    .style-dict-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .dict-style-card {
+      background: var(--panel); border: 2px solid var(--border);
+      border-radius: 10px; padding: 14px 10px; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+    .dict-style-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .dict-style-emoji { font-size: 26px; margin-bottom: 7px; display: block; }
+    .dict-style-label { font-size: 13px; font-weight: 800; margin-bottom: 3px; }
+    .dict-style-desc { font-size: 11px; color: var(--ink-soft); line-height: 1.4; }
+    .style-dict-custom {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      background: var(--panel-soft); flex-shrink: 0;
+    }
+    .style-dict-custom-label { font-size: 12px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+    .style-dict-custom-input {
+      flex: 1; border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s;
+    }
+    .style-dict-custom-input:focus { border-color: var(--accent); }
+    .btn-apply-dict {
+      background: var(--accent); color: white; border: none;
+      border-radius: 8px; padding: 8px 18px; font-size: 13px;
+      font-weight: 800; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    }
+    .btn-apply-dict:hover { background: var(--accent-hover); }
+
+    @media (max-width: 600px) {
+      .options-grid { grid-template-columns: 1fr 1fr; }
+      .step-question { font-size: 22px; }
+      .header-title { font-size: 15px; }
+    }
+  
+    /* -- Unified Sidebar Button Style -- */
+    .sidebar-menu li, .progress-label {
+      font-size: 13px;
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid transparent;
+      color: var(--ink-soft);
+      font-weight: 700;
+      transition: all 0.2s;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+    .sidebar-menu li:hover, .progress-label:hover {
+      background: var(--panel-soft);
+      border-color: var(--border);
+    }
+    .sidebar-menu li.active, .progress-label.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 900;
+      box-shadow: 0 2px 6px rgba(139, 92, 246, 0.15);
+    }
+    .sidebar-menu li.done, .progress-label.done {
+      /* Base done state without overriding active */
+    }
+    .sidebar-menu li.done::before, .progress-label.done::before {
+      content: '✓ ';
+      color: var(--green, #10b981);
+      font-weight: 900;
+    }
+    .sidebar-menu li.active.done, .progress-label.active.done {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .sidebar-menu li.active.done::before, .progress-label.active.done::before {
+      content: '✓ ';
+      color: var(--accent);
+      font-weight: 900;
+    }
+
+  
+.step-header, .step-question, .step-desc { text-align: left !important; }
+.dict-style-card { border: 2px solid transparent; transition: all 0.2s; }
+
+    /* コピー手順ガイド */
+    .copy-guide{background:#eff6ff;border:2px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin:14px 0 18px;text-align:left}
+    .copy-guide-ttl{font-size:12.5px;font-weight:900;color:#1d4ed8;margin-bottom:8px}
+    .copy-guide ol{margin:0;padding-left:1.35em}
+    .copy-guide li{font-size:13px;color:#1e3a5f;line-height:1.85;margin-bottom:2px}
+    .copy-guide .cg-tag{display:inline-block;background:#fff;border:1px solid #bfdbfe;border-radius:6px;padding:0 6px;font-weight:800;font-size:12px}
+    .copy-guide .cg-note{font-size:11.5px;color:#64748b;margin-top:8px;line-height:1.7}
+  </style>
+
+
+<style>
+/* Safe Modern Overrides */
+.option-card {
+  min-width: 0 !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-all !important;
+  white-space: normal !important;
+}
+.step-header, .step-question, .step-desc { text-align: left !important; }
+</style>
+
+  <style>
+/* === shared_dict.css (配布用にインライン化) === */
+/* Rich Dictionary Modal (Global) */
+.dict-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(6px);
+  z-index: 9999; display: none; justify-content: center; align-items: center; padding: 20px;
+}
+.dict-modal {
+  background: var(--bg); width: 100%; max-width: 900px; max-height: 90vh;
+  border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.25);
+}
+.dict-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--panel);
+}
+.dict-title { font-size: 20px; font-weight: 900; display: flex; align-items: center; gap: 8px; color: var(--ink); margin: 0; }
+.dict-title span { font-size: 13px; color: var(--ink-soft); font-weight: normal; margin-left: 10px; }
+.dict-close {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; color: var(--ink-soft); transition: all 0.2s;
+}
+.dict-close:hover { background: #fee2e2; color: #ef4444; border-color: #fca5a5; }
+
+.dict-tabs {
+  display: flex; gap: 4px; padding: 0 24px; background: var(--panel);
+  border-bottom: 1px solid var(--border); overflow-x: auto;
+}
+.dict-tab {
+  padding: 12px 20px; font-size: 14px; font-weight: 800; color: var(--ink-soft);
+  cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.dict-tab:hover { color: var(--ink); background: var(--bg); }
+.dict-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.dict-subtabs-container {
+  background: var(--bg);
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.dict-subtabs {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.dict-subtab {
+  padding: 6px 14px; font-size: 12px; font-weight: 700; color: var(--ink-soft);
+  background: white; border: 1px solid var(--border); border-radius: 20px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.dict-subtab:hover { border-color: var(--accent); color: var(--accent); }
+.dict-subtab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 800; box-shadow: 0 2px 4px rgba(220,38,38,0.1); }
+
+.dict-body {
+  padding: 24px; overflow-y: auto; flex: 1;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+  background: var(--bg);
+  align-content: start;
+}
+
+.dict-card {
+  background: var(--panel); border: 2px solid var(--border); border-radius: 12px;
+  padding: 16px 14px; cursor: pointer; transition: all 0.18s ease; text-align: left;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dict-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+.dict-card-emoji { font-size: 28px; margin-bottom: 4px; line-height: 1; }
+.dict-card-label { font-size: 14px; font-weight: 800; color: var(--ink); }
+.dict-card-prompt { font-size: 11px; color: var(--ink-soft); line-height: 1.4; }
+
+/* Inline Dictionary Button */
+.btn-dict-inline {
+  background: linear-gradient(135deg, #4f46e5, #ec4899); color: white;
+  border: none; border-radius: 6px; padding: 6px 12px;
+  font-size: 12px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
+  display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap;
+}
+.btn-dict-inline:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(236, 72, 153, 0.4); }
+
+/* Flash Animation for inserted text */
+@keyframes flash-insert {
+  0% { background-color: rgba(79, 70, 229, 0.3); color: #4f46e5; }
+  100% { background-color: transparent; color: inherit; }
+}
+.flash-inserted { animation: flash-insert 1s ease-out; }
+</style>
+
+<style>
+/* ── Subtabs ── */
+.step-subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.step-subtab-btn {
+  background: var(--panel); border: 1.5px solid var(--border); border-radius: 99px;
+  padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink-soft);
+  cursor: pointer; transition: all 0.2s;
+}
+.step-subtab-btn:hover { background: var(--panel-soft); border-color: var(--accent); color: var(--accent); }
+.step-subtab-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 2px 6px rgba(67,56,202,0.2); }
+</style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <div>
+        <div class="header-title">✏️ 線画・ぬりえビルダー</div>
+        <div class="header-subtitle">選ぶだけで塗り絵用の線画プロンプトが完成</div>
+      </div>
+    </div>
+    <button class="btn-random-header gacha-btn-header" onclick="__gachaRoll()">✨ 黄金レシピをガチャる</button>
+  </header>
+
+  <div class="app-layout">
+    <aside class="progress-sidebar">
+      <div class="sidebar-title">進捗状況</div>
+      <div class="progress-labels" id="progressLabels"></div>
+    </aside>
+
+  <main class="main">
+    <div class="combo-counter">
+      <div class="combo-count">全 <strong id="totalCombo">0</strong> 通りの組み合わせが作れます</div>
+    </div>
+
+    <div id="stepContainer"></div>
+
+    <!-- ── 画像→線画 変換専用画面 ── -->
+    <div id="convertScreen">
+      <div class="convert-screen-header">
+        <div class="convert-screen-title">📷 画像→塗り絵 変換プロンプト</div>
+        <div class="convert-screen-subtitle">写真・イラストを塗り絵用の白黒線画に変換します</div>
+      </div>
+
+      <div class="convert-complexity">
+        <div class="convert-section-title">線の細かさを選んでください</div>
+        <div class="convert-opts">
+          <div class="convert-opt" id="cx-simple" onclick="setComplexity('simple')">
+            <span class="convert-opt-emoji">🍼</span>
+            <div class="convert-opt-label">シンプル</div>
+            <div class="convert-opt-desc">子ども・幼児向け<br>太い線・大きい塗り面</div>
+          </div>
+          <div class="convert-opt" id="cx-normal" onclick="setComplexity('normal')">
+            <span class="convert-opt-emoji">📚</span>
+            <div class="convert-opt-label">標準</div>
+            <div class="convert-opt-desc">小学生〜大人向け<br>バランスのとれた線</div>
+          </div>
+          <div class="convert-opt" id="cx-detailed" onclick="setComplexity('detailed')">
+            <span class="convert-opt-emoji">🎨</span>
+            <div class="convert-opt-label">細密</div>
+            <div class="convert-opt-desc">大人・上級者向け<br>細かい線・複雑な塗り面</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prompt-box">
+        <div class="prompt-box-header">
+          <div class="prompt-box-title">📋 変換プロンプト（コピーして使う）</div>
+          <button class="btn-copy" id="copyConvertBtn" onclick="copyById('convertPrompt','copyConvertBtn')">コピー</button>
+        </div>
+        <div class="prompt-text" id="convertPrompt"></div>
+      </div>
+
+      <div class="convert-howto">
+        <div class="convert-howto-title">📎 使い方</div>
+        <ol>
+          <li>上のプロンプトを「コピー」する</li>
+          <li><strong>ChatGPT（GPT-4o）</strong> または <strong>Gemini</strong> を開く</li>
+          <li>線画にしたい<strong>写真・画像を添付</strong>する</li>
+          <li>コピーしたプロンプトを<strong>貼り付けて送信</strong>する</li>
+        </ol>
+        <div class="convert-tip">💡 元画像は明るくくっきりしたものほど綺麗な線画になります。背景が複雑な場合は「remove background first」を追加してみてください。</div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-edit-step" onclick="hideConvertScreen()">← 戻る</button>
+        <button class="btn btn-restart" onclick="restart()">🔄 最初からやり直す</button>
+      </div>
+    </div>
+
+    <div id="resultScreen">
+      <div class="result-header">
+        <div class="result-title">✏️ プロンプト完成！</div>
+        <div class="result-subtitle">選んだ内容からプロンプトができました</div>
+      <div class="copy-guide">
+        <div class="copy-guide-ttl">📋 貼り付けかた（2ステップ）</div>
+        <ol>
+          <li><span class="cg-tag">✅ ポジティブプロンプト</span> の「コピー」を押して、画像生成AIの<b>入力欄</b>に貼り付ける</li>
+          <li><span class="cg-tag">🚫 ネガティブプロンプト</span> は「入れたくないもの」の指定。<b>貼り先はツールによって違います</b>（下の説明を参照）</li>
+        </ol>
+        <div class="cg-note"><b>🚫 ネガティブプロンプトの貼り先は、使うツールで違います。</b><ul style="margin:6px 0 0;padding-left:1.2em">
+          <li><b>Stable Diffusion / NovelAI</b>：画面にある「Negative prompt」という<b>専用の入力欄</b>に貼る</li>
+          <li><b>Midjourney</b>：専用欄がないので、①の<b>末尾に半角スペースを空けて</b> <code>--no ○○, ○○</code> と書き足す</li>
+          <li><b>ChatGPT / Gemini / Firefly</b>：専用欄がないので、①のあとに「<b>〜は入れないでください</b>」と日本語で伝える（省いても構いません）</li>
+        </ul><div style="margin-top:6px">選んだツール向けの案内は、ネガティブプロンプト欄の下の 📌 にも表示されます。</div></div>
+      </div>
+      </div>
+
+      <div class="selected-summary" id="selectedSummary"></div>
+
+      <div class="prompt-box">
+        <div class="prompt-box-header">
+          <div class="prompt-box-title">📋 メインプロンプト</div>
+          <button class="btn-copy" id="copyMainBtn" onclick="copyById('mainPrompt','copyMainBtn')">コピー</button>
+        </div>
+        <div class="prompt-text" id="mainPrompt"></div>
+      </div>
+
+      <div class="prompt-box">
+        <div class="prompt-box-header">
+          <div class="prompt-box-title">🚫 ネガティブプロンプト</div>
+          <button class="btn-copy" id="copyNegBtn" onclick="copyById('negativePrompt','copyNegBtn')">コピー</button>
+        </div>
+        <div class="prompt-text negative-text" id="negativePrompt"></div>
+        <div style="margin-top:8px;font-size:11px;color:#9ca3af;line-height:1.6;" id="negUsageHint"></div>
+      </div>
+
+      <details class="jp-explain" id="jpExplain">
+        <summary>📋 日本語でプロンプト内容を確認する</summary>
+        <div class="jp-explain-body" id="jpExplainBody"></div>
+      </details>
+
+      <div class="tips-box">
+        <div class="tips-title">💡 使い方のヒント</div>
+        <div class="tips-text" id="tipsText"></div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-edit-step" onclick="goBackFromResult()">← ステップを修正</button>
+        <button class="btn btn-restart" onclick="restart()">🔄 最初からやり直す</button>
+        <button class="btn btn-another btn-gacha-another" onclick="__gachaRoll()">✨ 黄金レシピをガチャる</button>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <!-- Dictionary Modal -->
+  <div class="style-dict-overlay" id="styleDictOverlay" style="display:none;" onclick="closeDictOnBg(event)">
+    <div class="style-dict-panel">
+      <div class="style-dict-header">
+        <span class="style-dict-title" id="dictTitle">📖 辞典</span>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-close-dict" onclick="if(typeof clearDictSelection === 'function') clearDictSelection();" style="background:var(--panel-soft); border:1px solid var(--border); color:var(--ink-soft);">✖ クリア</button>
+          <button class="btn-close-dict" onclick="closeDict()">✕ 閉じる</button>
+        </div>
+      </div>
+      <div class="style-dict-tabs" id="dictTabs"></div>
+      <div class="style-dict-body" id="dictBody"></div>
+      <div class="style-dict-footer" style="padding: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; background: var(--panel-soft);">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+           <div id="dictSelectionPreview" style="font-size:15px; font-weight:bold; color:var(--ink);">選択中：<span style="color:var(--ink-soft); font-weight:normal;">未選択</span></div>
+           <button class="btn-apply-dict" onclick="confirmDictSelection()" style="background:var(--accent); color:white; padding:10px 32px; border-radius:8px; font-weight:bold; border:none; cursor:pointer; font-size:15px; box-shadow:0 4px 12px rgba(8,145,178,0.2);">決定</button>
+        </div>
+        <div class="style-dict-custom" style="padding:0; border:none; background:transparent;">
+          <span class="style-dict-custom-label">直接入力：</span>
+          <input type="text" class="style-dict-custom-input" id="dictCustomInput" placeholder="" oninput="previewDictCustom(this.value)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ═══════════════════════════════════════════════════════
+  // データ定義
+  // ═══════════════════════════════════════════════════════
+
+  const ALL_STEPS = [
+    {
+      key: 'theme',
+      question: '何を描く？',
+      desc: 'ぬりえのメインテーマを選んでください',
+      hasDictionary: false,
+      dictionaryType: 'theme',
+      addonPlaceholder: '例：柴犬、向日葵畑、人魚姫、桜の木など',
+      addonChips: ['桜の木', '猫', '薔薇', '人魚姫', '鳥', '山並み', '海', 'キャラクター'],
+      suggestions: ['熱帯魚', '恐竜', '電車', '城', '宇宙', '食べ物', '楽器', '昆虫', '花束', '森の動物たち', '水族館', '魔法使い'],
+      tabs: ['動物・生き物', '自然・植物', 'ファンタジー', '童話・絵本', '模様・曼荼羅', '和風・日本', '食べ物・日常', '🇬🇧 イギリス', '🇫🇷 フランス', '🇮🇹 イタリア', '🇺🇸 アメリカ', '🇨🇳 中国', '🇪🇬 中東・アフリカ', '🌍 その他世界'],
+      options: [
+        { tab: '動物・生き物', emoji: '📷', label: '画像・写真から抽出', desc: '手持ちの写真を線画に変換', isConvert: true, prompt: '', neg: '' },
+        // --- 動物・生き物 ---
+        { tab: '動物・生き物', emoji: '🐕', label: '柴犬', desc: '日本の和犬キャラクター', prompt: 'cute shiba inu dog coloring page, Japanese brown dog with curled tail, detailed fur texture line art', neg: '' },
+        { tab: '動物・生き物', emoji: '🐈', label: '猫', desc: '猫のかわいい姿', prompt: 'adorable cat coloring page, feline sitting pose with detailed fur and whiskers, cat character line art', neg: '' },
+        { tab: '動物・生き物', emoji: '🐘', label: '象', desc: '大きなゾウのぬりえ', prompt: 'elephant coloring page, gentle elephant with detailed wrinkled skin texture lines, large animal illustration', neg: '' },
+        { tab: '動物・生き物', emoji: '🦋', label: '蝶々', desc: '美しい蝶の翅のパターン', prompt: 'butterfly coloring page, detailed wing pattern with symmetrical intricate wing designs, butterfly illustration line art', neg: '' },
+        { tab: '動物・生き物', emoji: '🐬', label: 'イルカ', desc: '海を跳ねるイルカ', prompt: 'dolphin coloring page, leaping dolphin with ocean waves, marine life coloring illustration', neg: '' },
+        { tab: '動物・生き物', emoji: '🦁', label: 'ライオン', desc: 'たてがみの立派なライオン', prompt: 'lion coloring page, majestic lion with detailed flowing mane, royal animal illustration line art', neg: '' },
+        { tab: '動物・生き物', emoji: '🐼', label: 'パンダ', desc: '笹を食べるパンダ', prompt: 'panda bear coloring page, cute panda eating bamboo, black and white panda illustration with bamboo grove', neg: '' },
+        { tab: '動物・生き物', emoji: '🦊', label: '狐', desc: 'ふさふさのしっぽの狐', prompt: 'fox coloring page, fluffy fox with bushy tail in forest setting, detailed fur texture line art', neg: '' },
+        // --- 自然・植物 ---
+        { tab: '自然・植物', emoji: '🌸', label: '桜', desc: '春の桜の花枝', prompt: 'cherry blossom sakura coloring page, delicate flower branch with many blossoms and petals falling, spring botanical illustration', neg: '' },
+        { tab: '自然・植物', emoji: '🌹', label: 'バラ', desc: '美しいバラの花束', prompt: 'rose coloring page, detailed rose flowers with layered petals and thorny stems, classic botanical illustration line art', neg: '' },
+        { tab: '自然・植物', emoji: '🌻', label: 'ひまわり', desc: '元気なひまわり畑', prompt: 'sunflower field coloring page, large cheerful sunflowers with detailed petal and seed head patterns, summer botanical illustration', neg: '' },
+        { tab: '自然・植物', emoji: '🍄', label: 'きのこ', desc: '森のきのこたち', prompt: 'mushroom forest coloring page, various mushrooms with detailed cap patterns and textures, woodland fungi illustration', neg: '' },
+        { tab: '自然・植物', emoji: '🌊', label: '波・海', desc: '寄せ来る波の情景', prompt: 'ocean waves coloring page, detailed rolling waves with foam patterns, seascape line art with intricate water flow lines', neg: '' },
+        { tab: '自然・植物', emoji: '🗻', label: '富士山', desc: '日本の象徴・富士山', prompt: 'Mount Fuji coloring page, iconic Japanese mountain with snow cap, surrounding landscape with pine trees and clouds', neg: '' },
+        { tab: '自然・植物', emoji: '🍁', label: '紅葉', desc: '秋の紅葉の美しい風景', prompt: 'autumn maple leaves coloring page, detailed fall foliage with variety of leaf shapes, autumn forest scene illustration', neg: '' },
+        { tab: '自然・植物', emoji: '🌿', label: 'ジャングル', desc: '熱帯雨林の豊かな植物', prompt: 'jungle tropical coloring page, dense tropical leaves and exotic plants, rainforest botanical illustration with varied leaf patterns', neg: '' },
+        // --- ファンタジー ---
+        { tab: 'ファンタジー', emoji: '🐉', label: 'ドラゴン', desc: '翼を広げたドラゴン', prompt: 'dragon coloring page, majestic dragon with spread wings and detailed scale patterns, fantasy creature illustration line art', neg: '' },
+        { tab: 'ファンタジー', emoji: '🧚', label: '妖精', desc: '花の中の小さな妖精', prompt: 'fairy coloring page, delicate fairy with detailed wings sitting among flowers, magical fantasy illustration', neg: '' },
+        { tab: 'ファンタジー', emoji: '🦄', label: 'ユニコーン', desc: '虹色のたてがみのユニコーン', prompt: 'unicorn coloring page, graceful unicorn with flowing mane and detailed horn, magical creature surrounded by stars and flowers', neg: '' },
+        { tab: 'ファンタジー', emoji: '🏰', label: 'お城', desc: 'ファンタジーのお城', prompt: 'fantasy castle coloring page, detailed architectural castle with towers and gates, fairy tale castle illustration', neg: '' },
+        { tab: 'ファンタジー', emoji: '🧜', label: '人魚', desc: '海の人魚姫', prompt: 'mermaid coloring page, beautiful mermaid with detailed scaled tail, underwater scene with sea creatures and coral', neg: '' },
+        { tab: 'ファンタジー', emoji: '🧙', label: '魔法使い', desc: '魔法の杖を持つ魔法使い', prompt: 'wizard coloring page, robed wizard with pointed hat and magical staff, fantasy wizard illustration with spell effects', neg: '' },
+        { tab: 'ファンタジー', emoji: '⚔️', label: '騎士', desc: '鎧をまとった騎士', prompt: 'knight coloring page, armored medieval knight with detailed plate armor and sword, heroic knight illustration', neg: '' },
+        { tab: 'ファンタジー', emoji: '🌙', label: '夜の魔法世界', desc: '星と月の神秘的な空', prompt: 'night magical world coloring page, moon and stars with mystical clouds, fantasy night sky with crescent moon and twinkling stars pattern', neg: '' },
+        // --- 模様・曼荼羅 ---
+        // --- 和風・日本 ---
+        // --- 食べ物・日常 ---
+        // --- 世界の国・文化 ---
+        ,
+        // --- 🇬🇧 イギリス ---
+        { tab: '🇬🇧 イギリス', emoji: '🇬🇧', label: 'ロンドンの街並み', desc: '時計塔とイギリスの風景', prompt: 'London city street coloring page, double-decker bus and Big Ben, UK cityscape line art', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🐻', label: '近衛兵のクマ', desc: 'フサフサの帽子をかぶったクマ', prompt: 'British Queen\'s Guard bear character coloring page, cute teddy bear in tall bearskin hat, London motif', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🚌', label: '2階建てバス', desc: '名物の赤いロンドンバス', prompt: 'classic London double-decker bus coloring page, detailed transport vehicle line art', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🌉', label: 'タワーブリッジ', desc: 'テムズ川にかかる美しい橋', prompt: 'Tower Bridge London coloring page, detailed architectural drawing, River Thames cityscape', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🫖', label: 'アフタヌーンティー', desc: '紅茶とスコーンのセット', prompt: 'British afternoon tea set coloring page, elegant teapot and tiered cake stand with scones, English culture motif', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '📖', label: 'アンティーク絵本', desc: '海外の古い童話の絵本', prompt: 'antique open picture book coloring page, English literature motif, vintage storybook aesthetic', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🕵️', label: '名探偵と街角', desc: 'シャーロック・ホームズ風', prompt: 'Victorian London street coloring page with classic detective silhouette, Baker street aesthetic, mystery novel motif', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🏰', label: 'スコットランドの古城', desc: 'タータンチェックと城', prompt: 'Scottish highland castle coloring page, traditional tartan plaid patterns and ancient ruins, UK landscape', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '🎸', label: 'UKロックバンド', desc: 'ギターとドラムのロックバンド', prompt: 'British rock band instruments coloring page, electric guitar and drum set, UK music culture motif', neg: '' },
+        { tab: '🇬🇧 イギリス', emoji: '👑', label: '王冠と宝石', desc: 'イギリス王室の美しい宝物', prompt: 'royal crown and jewels coloring page, highly detailed British monarchy treasures, ornate gold and diamonds line art', neg: '' },
+
+        // --- 🇫🇷 フランス ---
+        { tab: '🇫🇷 フランス', emoji: '🇫🇷', label: 'エッフェル塔', desc: 'パリのロマンチックな風景', prompt: 'Eiffel tower Paris coloring page, French romantic cityscape, detailed architectural line art', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '⛩️', label: '凱旋門', desc: 'シャンゼリゼ通りのモニュメント', prompt: 'Arc de Triomphe Paris coloring page, Champs-Elysees street, detailed French monument line art', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '☕', label: 'パリのカフェ', desc: 'オシャレなオープンカフェ', prompt: 'Parisian open cafe coloring page, elegant tables and chairs on the street, French aesthetic', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '🥐', label: 'クロワッサンとパン', desc: '美味しそうなフランスパン', prompt: 'French bakery coloring page, basket of croissants and baguettes, delicious pastry illustration', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '🍷', label: 'ワインとチーズ', desc: '優雅なディナーのテーブル', prompt: 'French wine bottle and cheese platter coloring page, elegant vineyard aesthetic, gourmet food illustration', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '👗', label: 'ロココ調ドレス', desc: 'マリー・アントワネット風', prompt: 'Rococo style extravagant dress coloring page, Marie Antoinette era fashion, highly detailed ruffles and bows', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '🖼️', label: 'ルーブル美術館', desc: 'ガラスのピラミッドと宮殿', prompt: 'Louvre Museum Paris coloring page, glass pyramid and historic palace, beautiful architecture line art', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '👒', label: 'プロヴァンスの少女', desc: '南仏のラベンダー畑', prompt: 'Provence lavender field coloring page with girl in straw hat, South of France countryside landscape', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '🏰', label: 'モンサンミッシェル', desc: '海に浮かぶ神秘的な修道院', prompt: 'Mont Saint-Michel coloring page, magical abbey island in Normandy France, detailed fantasy-like landscape', neg: '' },
+        { tab: '🇫🇷 フランス', emoji: '🥖', label: 'マルシェの風景', desc: '新鮮な野菜が並ぶ市場', prompt: 'French street market coloring page, stalls with fresh vegetables and flowers, lively local marche illustration', neg: '' },
+
+        // --- 🇮🇹 イタリア ---
+        { tab: '🇮🇹 イタリア', emoji: '🇮🇹', label: 'ローマのコロッセオ', desc: '古代の円形闘技場', prompt: 'Colosseum Rome coloring page, ancient Roman architecture, historical landmark line art', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🛶', label: 'ベネチアのゴンドラ', desc: '水の都のロマンチックな風景', prompt: 'Venice canal and gondola coloring page, Italian water city landscape, romantic European cityscape', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🍕', label: 'ピザとパスタ', desc: '美味しいイタリア料理', prompt: 'Italian pizza and pasta coloring page, delicious Mediterranean food illustration, culinary art', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🍦', label: 'ジェラート', desc: '可愛くて美味しいアイス', prompt: 'Italian gelato ice cream coloring page, cute dessert illustration, sweet treats line art', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🛵', label: 'レトロなスクーター', desc: 'ローマの休日のようなバイク', prompt: 'vintage Italian scooter coloring page, classic Vespa motorcycle on cobblestone street, Roman Holiday aesthetic', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🎭', label: 'カーニバルの仮面', desc: 'ベネチアの豪華なマスク', prompt: 'Venetian carnival mask coloring page, highly ornate masquerade mask with feathers and jewels', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🏛️', label: 'ピサの斜塔', desc: '不思議に傾いた白い塔', prompt: 'Leaning Tower of Pisa coloring page, famous Italian architecture, detailed historic monument line art', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🍇', label: 'トスカーナのブドウ畑', desc: '美しい田園風景', prompt: 'Tuscany vineyard landscape coloring page, Italian countryside with grapevines and cypress trees', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '⛲', label: 'トレビの泉', desc: '願いを叶える美しい泉', prompt: 'Trevi Fountain Rome coloring page, magnificent baroque sculpture and water fountain, detailed Italian architecture', neg: '' },
+        { tab: '🇮🇹 イタリア', emoji: '🍋', label: 'アマルフィ海岸', desc: '崖に建つカラフルな家々', prompt: 'Amalfi coast coloring page, colorful houses on cliff by the sea, beautiful Italian riviera landscape', neg: '' },
+
+        // --- 🇺🇸 アメリカ ---
+        { tab: '🇺🇸 アメリカ', emoji: '🇺🇸', label: 'ニューヨーク摩天楼', desc: '高層ビルが立ち並ぶ都市', prompt: 'New York city skyscrapers coloring page, dense urban landscape, detailed architectural cityscape line art', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🗽', label: '自由の女神', desc: 'アメリカの象徴', prompt: 'Statue of Liberty New York coloring page, American landmark illustration, USA symbol', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🍔', label: 'ルート66のダイナー', desc: 'レトロなハンバーガー店', prompt: 'vintage American diner and Route 66 sign coloring page, retro Americana aesthetic, classic USA road trip motif', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🤠', label: 'カウボーイと馬', desc: '西部劇の荒野', prompt: 'Wild West cowboy riding a horse coloring page, western desert landscape, classic Americana illustration', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🎬', label: 'ハリウッドサイン', desc: '映画の都ロサンゼルス', prompt: 'Hollywood sign coloring page, Los Angeles landscape with palm trees, cinema capital motif', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🦅', label: '白頭ワシ', desc: 'アメリカの国鳥', prompt: 'bald eagle coloring page, majestic American national bird flying over mountains, detailed wildlife art', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🎸', label: 'カントリーギター', desc: 'ナッシュビルの音楽文化', prompt: 'acoustic guitar and cowboy hat coloring page, country music aesthetic, Nashville Tennessee motif', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🏞️', label: 'グランドキャニオン', desc: '広大な大地の峡谷', prompt: 'Grand Canyon national park coloring page, massive majestic desert canyon landscape, USA nature line art', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🚀', label: 'スペースシャトル', desc: '宇宙開発の歴史', prompt: 'space shuttle launching coloring page, NASA Kennedy Space Center motif, detailed spaceship line art', neg: '' },
+        { tab: '🇺🇸 アメリカ', emoji: '🏈', label: 'アメリカンフットボール', desc: '熱狂的なスポーツ', prompt: 'American football helmet and ball coloring page, dynamic sports illustration, USA athletics motif', neg: '' },
+
+        // --- 🇨🇳 中国 ---
+        { tab: '🇨🇳 中国', emoji: '🇨🇳', label: '万里の長城', desc: '果てしなく続く城壁', prompt: 'Great Wall of China coloring page, endless ancient wall winding through mountains, historical landscape', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🐼', label: 'パンダと竹林', desc: '笹を食べる可愛いパンダ', prompt: 'giant panda eating bamboo coloring page, Chinese bamboo forest, cute animal illustration line art', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🐉', label: '龍の舞', desc: 'お祭りの鮮やかな龍', prompt: 'Chinese dragon dance coloring page, intricate festive dragon costume, traditional festival motif', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🏯', label: '紫禁城（故宮）', desc: '広大で美しい伝統的な宮殿', prompt: 'Forbidden City Beijing coloring page, traditional Chinese imperial palace, ancient architecture line art', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🏮', label: '提灯（ランタン）', desc: '赤く光る幻想的な提灯', prompt: 'Chinese lanterns hanging coloring page, glowing red paper lanterns, traditional oriental aesthetic', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🎭', label: '京劇のお面', desc: '伝統的な舞台芸術', prompt: 'Peking opera mask coloring page, highly detailed traditional Chinese theater makeup design', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🥟', label: '飲茶と点心', desc: 'せいろに入った美味しい料理', prompt: 'Dim sum in bamboo steamer coloring page, Chinese tea and dumplings, delicious food illustration', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🪭', label: '扇子と牡丹', desc: '美しく優雅な中国の扇子', prompt: 'elegant Chinese folding fan and peony flowers coloring page, traditional oriental decorative art', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🐅', label: '水墨画風のトラ', desc: '力強い中国の虎', prompt: 'Chinese ink wash style tiger coloring page, powerful fierce tiger in bamboo, traditional brush painting motif', neg: '' },
+        { tab: '🇨🇳 中国', emoji: '🍵', label: '中国茶器', desc: '優雅なお茶のひととき', prompt: 'traditional Chinese tea set coloring page, elegant teapot and small cups with oriental patterns', neg: '' },
+
+        // --- 🇪🇬 中東・アフリカ ---
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🇪🇬', label: 'ピラミッドとラクダ', desc: 'エジプトの砂漠の風景', prompt: 'Egyptian pyramids and camel coloring page, desert landscape line art, ancient world motif', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🦁', label: 'スフィンクス', desc: '砂漠の守り神', prompt: 'Great Sphinx of Giza coloring page, giant ancient Egyptian statue in desert, archaeological monument', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🏺', label: 'ツタンカーメン', desc: '黄金のファラオのマスク', prompt: 'Tutankhamun mask coloring page, highly detailed ancient Egyptian pharaoh gold mask, intricate hieroglyphs', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🕌', label: '美しいモスク', desc: 'ドームとミナレットの建築', prompt: 'beautiful Islamic mosque coloring page, highly detailed dome and minarets, intricate geometric patterns', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🧞', label: '魔法のランプ', desc: 'アラビアンナイトの世界', prompt: 'magic genie lamp coloring page, Arabian nights aesthetic, ornate brass oil lamp with smoke', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🎪', label: 'バザール（市場）', desc: 'スパイスと絨毯の市場', prompt: 'Middle Eastern bazaar market coloring page, stalls with spices, colorful rugs and hanging lamps', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🐘', label: 'サバンナのゾウ', desc: 'アフリカの大自然', prompt: 'African savanna landscape coloring page, majestic elephant walking, acacia trees in background', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🦒', label: 'キリンと夕焼け', desc: '美しいアフリカの風景', prompt: 'giraffes in African plains coloring page, serene savanna landscape, wildlife nature illustration', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🪘', label: '民族楽器ジャンベ', desc: 'アフリカの太鼓', prompt: 'African djembe drum coloring page, traditional percussion instrument with tribal patterns', neg: '' },
+        { tab: '🇪🇬 中東・アフリカ', emoji: '🏺', label: 'エジプトの壁画', desc: 'ヒエログリフと神々', prompt: 'Egyptian hieroglyphs and gods mural coloring page, ancient temple wall carvings line art', neg: '' },
+
+        // --- 🌍 その他世界 ---
+        { tab: '🌍 その他世界', emoji: '🌷', label: 'オランダの風車', desc: 'チューリップ畑と風車', prompt: 'Dutch windmill and tulips coloring page, Netherlands countryside landscape, beautiful spring floral scene', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🏔️', label: 'スイスのアルプス', desc: '大自然の山々と山小屋', prompt: 'Swiss Alps and chalet coloring page, majestic mountains and wooden cabin, nature landscape line art', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🏠', label: 'ギリシャのサントリーニ', desc: '白い壁とドーム屋根の街', prompt: 'Santorini Greece coloring page, white houses and dome roofs, Mediterranean sea view cityscape', neg: '' },
+        { tab: '🌍 その他世界', emoji: '⛪', label: 'サグラダ・ファミリア', desc: 'スペインの巨大な教会', prompt: 'Sagrada Familia Spain coloring page, intricate detailed church architecture, Antoni Gaudi masterpiece line art', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🏰', label: 'ドイツの古城', desc: '森の中にそびえる城', prompt: 'Neuschwanstein castle Germany coloring page, fairytale castle in forest, detailed European architecture line art', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🎈', label: 'カッパドキアの気球', desc: 'トルコの空を飛ぶ気球', prompt: 'Cappadocia hot air balloons coloring page, Turkey landscape with many flying balloons, magical sky scene', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🕌', label: 'タージ・マハル', desc: 'インドの美しい宮殿', prompt: 'Taj Mahal India coloring page, beautiful white marble palace, detailed symmetrical architecture line art', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🏯', label: '韓国の景福宮', desc: '伝統的な美しい宮殿', prompt: 'Gyeongbokgung Palace Korea coloring page, traditional Korean architecture, beautiful palace line art', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🎭', label: 'シドニーのオペラハウス', desc: 'オーストラリアの港', prompt: 'Sydney Opera House Australia coloring page, iconic harbor architecture, modern landmark illustration', neg: '' },
+        { tab: '🌍 その他世界', emoji: '🗿', label: 'マヤ文明の遺跡', desc: 'メキシコのピラミッド', prompt: 'Mayan pyramid ruins coloring page, ancient Mexican architecture in jungle, historical civilization motif', neg: '' }
+      
+      ,
+        // --- 📖 童話・絵本 ---
+        { tab: '童話・絵本', emoji: '🐇', label: 'アリスと白うさぎ', desc: '不思議の国への入り口', prompt: 'Alice in Wonderland coloring page, Alice following the White Rabbit with pocket watch, fantasy storybook aesthetic', neg: '' },
+        { tab: '童話・絵本', emoji: '☕', label: 'マッドティーパーティ', desc: '帽子屋と三月ウサギのお茶会', prompt: 'Mad Hatter tea party coloring page, Alice in Wonderland, chaotic elegant table setting with teapots and cakes, fantasy art', neg: '' },
+        { tab: '童話・絵本', emoji: '🐈', label: 'チェシャ猫', desc: 'ニヤニヤ笑う不思議な猫', prompt: 'Cheshire cat smiling from a tree branch coloring page, Alice in wonderland, magical forest background', neg: '' },
+        { tab: '童話・絵本', emoji: '❤️', label: 'ハートの女王', desc: 'トランプの兵隊と赤い薔薇', prompt: 'Queen of Hearts coloring page, playing card soldiers painting white roses red, Alice in wonderland aesthetic', neg: '' },
+        { tab: '童話・絵本', emoji: '🕰️', label: '時計と鍵', desc: '不思議の国のアイテム', prompt: 'Alice in wonderland items coloring page, vintage pocket watch, ornate keys and drink me bottle, fantasy line art', neg: '' },
+        { tab: '童話・絵本', emoji: '🍄', label: '喋る花とキノコ', desc: '不思議の森の植物たち', prompt: 'Alice in wonderland singing flowers and magical mushrooms coloring page, fantasy botanical line art', neg: '' },
+        { tab: '童話・絵本', emoji: '👸', label: 'シンデレラ', desc: 'ガラスの靴とカボチャの馬車', prompt: 'Cinderella magical pumpkin carriage and glass slipper coloring page, beautiful fairytale princess aesthetic', neg: '' },
+        { tab: '童話・絵本', emoji: '🏰', label: 'シンデレラ城', desc: '星降る夜の美しいお城', prompt: 'fairytale magic castle coloring page, starry night sky, Cinderella castle line art, intricate architecture', neg: '' },
+        { tab: '童話・絵本', emoji: '🍎', label: '白雪姫', desc: '魔法の鏡と毒リンゴ', prompt: 'Snow White coloring page, magic mirror and poison apple, cute forest animals, classic fairytale motif', neg: '' },
+        { tab: '童話・絵本', emoji: '⛏️', label: '七人の小人', desc: '森の中の可愛い小屋', prompt: 'seven dwarfs cozy cottage in the forest coloring page, Snow White fairy tale, rustic wooden house line art', neg: '' },
+        { tab: '童話・絵本', emoji: '🧜‍♀️', label: '人魚姫', desc: '海の中の美しいお城', prompt: 'Little Mermaid coloring page, beautiful underwater kingdom, coral reef and sea creatures, fantasy ocean line art', neg: '' },
+        { tab: '童話・絵本', emoji: '🐺', label: '赤ずきんちゃん', desc: '森の道とオオカミ', prompt: 'Little Red Riding Hood walking in dark forest coloring page, cute girl with basket, fairytale wolf silhouette', neg: '' },
+        { tab: '童話・絵本', emoji: '🍭', label: 'お菓子の家', desc: 'ヘンゼルとグレーテル', prompt: 'Hansel and Gretel gingerbread house coloring page, magical candy house covered in sweets, fairytale illustration', neg: '' },
+        { tab: '童話・絵本', emoji: '🧞‍♂️', label: 'アラジン', desc: '魔法の絨毯とランプ', prompt: 'Aladdin magic carpet ride coloring page, beautiful Arabian nights city landscape, ornate magical lamp', neg: '' },
+        { tab: '童話・絵本', emoji: '🧚', label: 'ピーターパン', desc: '夜空を飛ぶ子供たち', prompt: 'Peter Pan flying over London city at night coloring page, Tinkerbell fairy dust, Neverland fantasy aesthetic', neg: '' },
+        { tab: '童話・絵本', emoji: '🏴‍☠️', label: '海賊船', desc: 'フック船長のガレオン船', prompt: 'Captain Hook pirate ship coloring page, magnificent wooden galleon sailing in Neverland, fantasy maritime art', neg: '' },
+        { tab: '童話・絵本', emoji: '👸🏼', label: '眠れる森の美女', desc: '茨に覆われたお城', prompt: 'Sleeping Beauty castle covered in thorny vines coloring page, dark fairy tale aesthetic, intricate ruins line art', neg: '' },
+        { tab: '童話・絵本', emoji: '🌹', label: '美女と野獣', desc: 'ガラスドームの魔法の薔薇', prompt: 'Beauty and the Beast enchanted rose in glass dome coloring page, elegant gothic castle library background', neg: '' },
+        { tab: '童話・絵本', emoji: '🧸', label: 'おもちゃの国', desc: 'くるみ割り人形', prompt: 'Nutcracker toy soldier and ballerina coloring page, Christmas fairytale aesthetic, magical toy kingdom', neg: '' },
+        { tab: '童話・絵本', emoji: '🦢', label: 'みにくいアヒルの子', desc: '美しい白鳥への変身', prompt: 'Ugly duckling transforming into beautiful swan coloring page, elegant feathers, serene lake landscape line art', neg: '' },
+
+        // --- 🌀 模様・曼荼羅 ---
+        { tab: '模様・曼荼羅', emoji: '🌀', label: '基本の曼荼羅', desc: 'シンプルで塗りやすい円形', prompt: 'simple basic mandala coloring page, symmetrical circular geometric patterns, easy zen coloring', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🌸', label: 'お花の曼荼羅', desc: '花びらが広がる美しいデザイン', prompt: 'floral mandala coloring page, beautiful intricate flower petals, botanical circular pattern, zen art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '⭐', label: '星型の幾何学曼荼羅', desc: 'シャープでかっこいい図形', prompt: 'geometric star mandala coloring page, sharp symmetrical geometric shapes, intricate abstract pattern', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🦉', label: 'フクロウ曼荼羅', desc: '動物の形をした曼荼羅', prompt: 'owl shaped mandala coloring page, intricate zentangle animal art, highly detailed patterned owl silhouette', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🐈', label: 'ネコ曼荼羅', desc: '可愛い猫のシルエット模様', prompt: 'cat shaped mandala coloring page, elegant feline silhouette filled with zentangle patterns, zen coloring', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🦋', label: '蝶々の曼荼羅', desc: '美しい羽の模様', prompt: 'butterfly mandala coloring page, highly detailed symmetrical butterfly wings with intricate patterns', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🪷', label: '蓮の花の曼荼羅', desc: 'スピリチュアルで神秘的', prompt: 'lotus flower mandala coloring page, spiritual zen design, intricate elegant oriental patterns', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '☀️', label: '太陽と月の曼荼羅', desc: '宇宙を感じるデザイン', prompt: 'sun and moon mandala coloring page, celestial aesthetic, intricate astrological patterns, mystical line art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🌌', label: '宇宙の幾何学パターン', desc: '連続する神秘的な模様', prompt: 'seamless cosmic geometric pattern coloring page, sacred geometry, intricate abstract wallpaper design', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🌊', label: '連続する波模様', desc: '海や水をイメージしたパターン', prompt: 'seamless wave pattern coloring page, elegant flowing water lines, Japanese seigaiha style abstract art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🌿', label: 'アラベスク模様', desc: '植物の蔓が絡み合うデザイン', prompt: 'intricate arabesque floral pattern coloring page, elegant intertwining vines and leaves, classic decorative art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '💠', label: 'ステンドグラス風', desc: '教会の窓のような幾何学', prompt: 'stained glass window pattern coloring page, intricate geometric mosaic, beautiful gothic cathedral design', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '⚜️', label: 'ケルト文様', desc: '無限に続く美しい結び目', prompt: 'Celtic knot pattern coloring page, endless intricate woven lines, traditional Irish decorative knotwork', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🧩', label: 'ゼンタングル風', desc: '細かく敷き詰められた模様', prompt: 'zentangle abstract art coloring page, incredibly dense intricate doodled patterns, mindfulness coloring', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '❤️', label: 'ハートの曼荼羅', desc: '可愛らしくロマンチック', prompt: 'heart shaped mandala coloring page, romantic elegant patterns, symmetrical love motif line art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🐘', label: 'ゾウの曼荼羅', desc: 'エスニックな雰囲気', prompt: 'elephant shaped mandala coloring page, Indian ethnic aesthetic, highly detailed ornate zentangle elephant', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '💎', label: '万華鏡パターン', desc: '宝石のように輝く幾何学', prompt: 'kaleidoscope geometric pattern coloring page, crystal-like symmetrical abstract line art', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '❄️', label: '雪の結晶曼荼羅', desc: '冬の美しく繊細なデザイン', prompt: 'snowflake mandala coloring page, delicate intricate winter ice crystals, symmetrical hexagonal pattern', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🕸️', label: 'ドリームキャッチャー', desc: 'ネイティブアメリカンの装飾', prompt: 'intricate dreamcatcher coloring page, detailed feathers and woven web, native american spiritual aesthetic', neg: '' },
+        { tab: '模様・曼荼羅', emoji: '🌀', label: '超精密曼荼羅', desc: '極限まで細かい瞑想用', prompt: 'ultra intricate microscopic mandala coloring page, extreme high density zentangle pattern, meditation art', neg: '' },
+
+        // --- 🏯 和風・日本 ---
+        { tab: '和風・日本', emoji: '🗻', label: '富士山と桜', desc: '日本の美しい大定番', prompt: 'Mount Fuji and cherry blossoms coloring page, traditional Japanese landscape, beautiful spring scenery', neg: '' },
+        { tab: '和風・日本', emoji: '🏯', label: '京都の五重塔', desc: '古都の趣ある風景', prompt: 'Kyoto five-story pagoda coloring page, traditional Japanese temple architecture, historical city landscape', neg: '' },
+        { tab: '和風・日本', emoji: '⛩️', label: '伏見稲荷の千本鳥居', desc: '神秘的な赤い鳥居のトンネル', prompt: 'Fushimi Inari shrine torii gates tunnel coloring page, traditional Japanese spiritual landscape', neg: '' },
+        { tab: '和風・日本', emoji: '🎋', label: '日本庭園と枯山水', desc: '静寂な砂と石の庭', prompt: 'Japanese zen garden coloring page, raked sand karesansui, bonsai trees and stone lanterns, peaceful landscape', neg: '' },
+        { tab: '和風・日本', emoji: '🏮', label: '古い町並み', desc: '提灯が灯る温泉街', prompt: 'traditional Japanese onsen town street coloring page, wooden ryokan inns and glowing paper lanterns', neg: '' },
+        { tab: '和風・日本', emoji: '👘', label: '花魁と豪華な着物', desc: '江戸時代の華やかな衣装', prompt: 'Oiran courtesan in gorgeous extravagant kimono coloring page, highly detailed Japanese traditional fashion', neg: '' },
+        { tab: '和風・日本', emoji: '👺', label: '歌舞伎の隈取', desc: '日本の伝統芸能', prompt: 'Kabuki actor kumadori makeup coloring page, dynamic traditional Japanese theater performance art', neg: '' },
+        { tab: '和風・日本', emoji: '🍵', label: '茶道（お抹茶と和菓子）', desc: 'わびさびの心', prompt: 'Japanese tea ceremony set coloring page, matcha bowl, bamboo whisk and traditional wagashi sweets', neg: '' },
+        { tab: '和風・日本', emoji: '👘', label: '折り紙', desc: '折り鶴など日本の遊び', prompt: 'Japanese origami paper cranes coloring page, beautiful geometric folded paper art, traditional culture motif', neg: '' },
+        { tab: '和風・日本', emoji: '🪭', label: '扇子と和傘', desc: '優雅な和の小物', prompt: 'elegant Japanese folding fan sensu and wagasa umbrella coloring page, beautiful oriental patterns', neg: '' },
+        { tab: '和風・日本', emoji: '🎆', label: '夏祭りと金魚すくい', desc: '提灯と花火', prompt: 'Japanese summer festival coloring page, goldfish scooping game, glowing lanterns and fireworks', neg: '' },
+        { tab: '和風・日本', emoji: '🦊', label: '九尾の狐', desc: '神秘的な日本の大妖怪', prompt: 'nine-tailed fox kyubi kitsune coloring page, majestic mythical Japanese yokai, mystical magical aura', neg: '' },
+        { tab: '和風・日本', emoji: '🐲', label: '龍神', desc: '空を舞う力強い日本の龍', prompt: 'Japanese dragon ryu coloring page, fierce oriental dragon flying in clouds, traditional tattoo style art', neg: '' },
+        { tab: '和風・日本', emoji: '👺', label: '天狗とカラス天狗', desc: '山の神様', prompt: 'Tengu yokai coloring page, traditional Japanese mountain goblin with long nose and wings, folklore art', neg: '' },
+        { tab: '和風・日本', emoji: '👹', label: '風神雷神', desc: '迫力ある日本の神様', prompt: 'Fujin and Raijin coloring page, Japanese gods of wind and thunder, dynamic powerful traditional art style', neg: '' },
+        { tab: '和風・日本', emoji: '🦁', label: '狛犬', desc: '神社の守り神', prompt: 'Komainu shrine guardian lion-dog statue coloring page, highly detailed stone carving, Japanese shinto motif', neg: '' },
+        { tab: '和風・日本', emoji: '🌸', label: '花札', desc: '猪鹿蝶などの美しい絵柄', prompt: 'Hanafuda playing cards coloring page, traditional Japanese floral patterns, elegant oriental design', neg: '' },
+        { tab: '和風・日本', emoji: '🎏', label: '鯉のぼりと兜', desc: '端午の節句', prompt: 'Koinobori carp streamers and samurai helmet coloring page, traditional Japanese children\'s day festival', neg: '' },
+        { tab: '和風・日本', emoji: '🗿', label: 'お地蔵様', desc: '道端の可愛いお地蔵さん', prompt: 'cute Jizo statues coloring page, small stone monks with red bibs in nature, peaceful Japanese rural scene', neg: '' },
+        { tab: '和風・日本', emoji: '🐱', label: '招き猫', desc: '福を呼ぶ縁起物', prompt: 'Maneki Neko lucky cat coloring page, traditional Japanese ceramic figurine holding gold coin, auspicious motif', neg: '' },
+
+        // --- 🍰 食べ物・日常 ---
+        { tab: '食べ物・日常', emoji: '🍨', label: '豪華なパフェ', desc: 'フルーツとアイスの宝石箱', prompt: 'extravagant fruit parfait ice cream coloring page, highly detailed delicious dessert in tall glass', neg: '' },
+        { tab: '食べ物・日常', emoji: '🥞', label: 'パンケーキ', desc: 'シロップたっぷりのパンケーキ', prompt: 'fluffy pancakes stack coloring page, melting butter and dripping maple syrup, delicious breakfast illustration', neg: '' },
+        { tab: '食べ物・日常', emoji: '🗼', label: 'マカロンタワー', desc: '可愛くておしゃれなスイーツ', prompt: 'macaron tower coloring page, elegant French pastry dessert, highly detailed cute sweets illustration', neg: '' },
+        { tab: '食べ物・日常', emoji: '🧁', label: 'カップケーキ', desc: 'クリームとトッピング', prompt: 'cute frosted cupcakes coloring page, sprinkles and cherry on top, delicious bakery dessert art', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍣', label: 'お寿司の盛り合わせ', desc: '豪華で美味しそうな和食', prompt: 'sushi platter coloring page, delicious assorted Japanese nigiri and rolls, highly detailed food illustration', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍱', label: '幕の内弁当', desc: 'おかずがいっぱいのお弁当', prompt: 'gorgeous Japanese bento box coloring page, detailed assorted traditional side dishes and rice balls', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍔', label: 'ハンバーガーセット', desc: 'ポテトとコーラと一緒に', prompt: 'cheeseburger with french fries and soda coloring page, classic fast food meal, delicious junk food art', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍜', label: 'ラーメン', desc: 'チャーシューと煮玉子', prompt: 'Japanese ramen noodle bowl coloring page, delicious soup with chashu pork and egg, detailed food illustration', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍞', label: '焼きたてパンの籠', desc: 'ベーカリーの美味しいパン', prompt: 'basket of freshly baked bread coloring page, assorted bakery pastries and baguettes, delicious food art', neg: '' },
+        { tab: '食べ物・日常', emoji: '☕', label: 'アンティークなティーセット', desc: '優雅なお茶の時間', prompt: 'antique ornate teapot and teacups coloring page, elegant Victorian tableware, English afternoon tea aesthetic', neg: '' },
+        { tab: '食べ物・日常', emoji: '🧴', label: '香水瓶とコスメ', desc: 'おしゃれなメイク道具', prompt: 'elegant perfume bottles and cosmetics makeup coloring page, beautiful glass bottles, girly fashion aesthetic', neg: '' },
+        { tab: '食べ物・日常', emoji: '🖋️', label: '可愛い文房具', desc: '万年筆やインク瓶', prompt: 'vintage stationery coloring page, elegant fountain pen, ink bottle, and open journal, aesthetic desk items', neg: '' },
+        { tab: '食べ物・日常', emoji: '💐', label: '花瓶とブーケ', desc: 'お部屋を彩る美しい花', prompt: 'beautiful flower bouquet in ornate vase coloring page, elegant botanical arrangement, interior decoration', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍳', label: 'キッチンツール', desc: 'お鍋やフライパンなど', prompt: 'kitchen cooking utensils coloring page, hanging pots, pans, and spatulas, cozy culinary aesthetic', neg: '' },
+        { tab: '食べ物・日常', emoji: '🪟', label: '窓辺の風景と猫', desc: 'のんびりしたお昼寝タイム', prompt: 'cozy window seat coloring page, cute cat sleeping in sunlight, potted plants and books, relaxing aesthetic', neg: '' },
+        { tab: '食べ物・日常', emoji: '🛁', label: 'バスタブと泡', desc: 'リラックスできるバスタイム', prompt: 'elegant clawfoot bathtub filled with bubbles coloring page, relaxing spa aesthetic with candles and towels', neg: '' },
+        { tab: '食べ物・日常', emoji: '🧸', label: 'テディベアと裁縫箱', desc: '可愛い糸やボタン', prompt: 'cute teddy bear with vintage sewing box coloring page, spools of thread and buttons, cozy craft aesthetic', neg: '' },
+        { tab: '食べ物・日常', emoji: '📸', label: 'レトロなカメラ', desc: 'フィルムカメラと写真', prompt: 'vintage film camera coloring page, scattered polaroid photos, classic photography equipment line art', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍓', label: 'フルーツバスケット', desc: 'イチゴやブドウなどの果物', prompt: 'wicker basket full of fresh fruits coloring page, strawberries, grapes, and apples, delicious harvest art', neg: '' },
+        { tab: '食べ物・日常', emoji: '🍩', label: 'ドーナツといちごミルク', desc: 'ポップで可愛いおやつ', prompt: 'cute frosted donuts and strawberry milk glass coloring page, sweet pop aesthetic dessert illustration', neg: '' }
+
+      ]
+    },
+    {
+      key: 'difficulty',
+      question: '塗り絵の難易度は？',
+      desc: '線の細かさやパーツの多さを選びます',
+      suggestions: ['大きなパーツだけ', '直線多め', '輪郭だけ', 'シルエットに近い', 'ごちゃごちゃせず', 'スッキリした線', '単純な形に', 'テクスチャなし'],
+      options: [
+        { emoji:'🍼', label:'とっても簡単',    desc:'幼児〜年長向け。大きな形・太い線', prompt:'extremely simple thick bold outlines, very large easy-to-color areas, maximum 4 elements, chunky rounded forms, minimum fine detail, toddler-friendly coloring', neg:'intricate detail, thin lines, complex patterns' },
+        { emoji:'🐣', label:'やさしい',        desc:'小学校低学年向け。シンプルなデザイン', prompt:'simple thick outlines, clear distinct shapes, limited interior detail lines, gentle complexity, easy for young children to color neatly', neg:'very intricate, tiny details, adult coloring complexity' },
+        { emoji:'📚', label:'ふつう',          desc:'小学校高学年〜大人の入門向け', prompt:'medium weight clean outlines, moderate interior detail, balanced complexity level, suitable for older children and adult beginners', neg:'extremely intricate, mandala-level complexity' },
+        { emoji:'🎨', label:'むずかしい',      desc:'大人・上級者向け。細かい線画', prompt:'fine detailed linework, intricate interior pattern lines, rich detail density, adult coloring book complexity, many small coloring areas', neg:'simple chunky shapes, thick only lines' },
+        { emoji:'🔬', label:'超細かい',        desc:'上級者専用。瞑想塗り絵レベル', prompt:'extremely intricate ultra-fine line art, meditation coloring book level complexity, maximum density of details, microscopic-level fine linework, elaborate pattern filling every space', neg:'simple, chunky, child-friendly' }]
+    },
+    {
+      key: 'linestyle',
+      question: '線のスタイルは？',
+      desc: 'アウトラインの雰囲気・太さを選んでください',
+      addonPlaceholder: '例：線に強弱をつけて、手描き感を出して、など',
+      addonChips: ['線に強弱をつけて', '手描き感重視', 'ハッチング入り', '交差線で陰影', 'ドット調', 'スクラッチ風'],
+      suggestions: ['一筆書き風', '連続した曲線', '幾何学模様', '渦巻き', '同心円', 'うろこ状', 'タイル模様', '縦縞', '斜線のみ', '点描風'],
+      tabs: ['定番の太さ', '特殊なペン', '画材・アナログ', 'タッチ・技法'],
+      options: [
+        // --- 定番の太さ (6枚) ---
+        { tab: '定番の太さ', emoji: '🖋️', label: '極太の線', desc: '力強くてインパクトのある太い線', prompt: 'very bold heavy thick black lines, strong graphic linework', neg: 'thin, delicate' },
+        { tab: '定番の太さ', emoji: '🖊️', label: 'しっかり太線', desc: '均一でハッキリとした見やすい太線', prompt: 'uniform bold thick black outlines, consistent heavy line weight', neg: 'thin, sketch-like' },
+        { tab: '定番の太さ', emoji: '☁️', label: 'ふんわり太線', desc: '丸みのある柔らかく優しい太線', prompt: 'soft rounded thick outlines, bubbly friendly line quality', neg: 'sharp angular, scratchy' },
+        { tab: '定番の太さ', emoji: '📏', label: '標準・普通の線', desc: '太すぎず細すぎないバランスの良い線', prompt: 'medium weight balanced black outlines, professional clean illustration line quality', neg: 'extremely thick, extremely thin' },
+        { tab: '定番の太さ', emoji: '🧵', label: '繊細な細線', desc: '大人向け塗り絵のような細く上品な線', prompt: 'delicate thin fine black lines, elegant lightweight linework', neg: 'thick bold, chunky' },
+        { tab: '定番の太さ', emoji: '🕸️', label: '極細の線', desc: '髪の毛のように極めて細い線', prompt: 'hairline thin black lines, ultra-fine delicate microscopic linework', neg: 'thick bold, heavy lines' },
+
+        // --- 特殊なペン (6枚) ---
+        { tab: '特殊なペン', emoji: '✒️', label: 'Gペン風(強弱)', desc: '漫画のような線の太さに強弱がある線', prompt: 'g-pen style dynamic varied line weight, expressive dip pen ink lines, manga studio pen tool style', neg: 'uniform monoline, boring weight' },
+        { tab: '特殊なペン', emoji: '📏', label: 'ミリペン風(均一)', desc: '太さが一切変わらない均等な線', prompt: 'fineliner pen style, monoline uniform black ink drawing, technical pen precision lines', neg: 'varied weight, dynamic brush' },
+        { tab: '特殊なペン', emoji: '🖋️', label: 'カブラペン風', desc: '滑らかで癖のない伸びやかなペン線', prompt: 'smooth flowing ink pen strokes, elegant kabura pen style manga lines', neg: 'rough, scratchy' },
+        { tab: '特殊なペン', emoji: '🖍️', label: 'サインペン風', desc: '先端が丸くて親しみやすい線', prompt: 'marker pen style linework, blunt rounded stroke endings, felt tip pen drawing', neg: 'sharp edges, fine art ink' },
+        { tab: '特殊なペン', emoji: '🖋️', label: '万年筆風', desc: 'インクの溜まりや適度な掠れがある線', prompt: 'fountain pen sketch style, slight ink pooling and elegant ink flow lines', neg: 'digital vector clean line' },
+        { tab: '特殊なペン', emoji: '🔠', label: 'カリグラフィー風', desc: '角度によって太さが変わるリボン状の線', prompt: 'calligraphy nib style lines, angled ribbon-like strokes, thick and thin contrasting lines', neg: 'uniform round nib' },
+
+        // --- 画材・アナログ (6枚) ---
+        { tab: '画材・アナログ', emoji: '✏️', label: '鉛筆スケッチ風', desc: 'ザラザラした黒鉛の質感が残る線', prompt: 'rough pencil sketch style, graphite textured lines, soft analog pencil drawing', neg: 'clean digital ink, solid black' },
+        { tab: '画材・アナログ', emoji: '🖍️', label: '色鉛筆風の線', desc: '少し色味のついた柔らかいロウの質感', prompt: 'colored pencil textured lines, soft waxy colored strokes, colored outline lineart', neg: 'harsh black ink, solid vector' },
+        { tab: '画材・アナログ', emoji: '🖌️', label: '筆・毛筆風', desc: '墨汁で書いたような和風の有機的な線', prompt: 'sumi-e brush ink strokes, expressive traditional calligraphy style brushwork, organic varying thickness lines', neg: 'technical pen, clean rigid lines' },
+        { tab: '画材・アナログ', emoji: '💧', label: '水彩筆風(にじみ)', desc: '水分を含んでフワッと滲んだような線', prompt: 'watercolor brush lines, bleeding edge wet ink strokes, soft diffuse linework', neg: 'sharp crisp edges' },
+        { tab: '画材・アナログ', emoji: '🪵', label: '木炭・チョーク風', desc: '粉っぽくて力強いカスレのある太い線', prompt: 'charcoal sketch style, thick textured powdery black lines, expressive rough chalk strokes', neg: 'clean crisp ink line' },
+        { tab: '画材・アナログ', emoji: '🖍️', label: 'クレヨン風', desc: '子供のお絵描きのようなクレヨンの質感', prompt: 'crayon drawing style, waxy chunky rough textured lines, child-like naive strokes', neg: 'clean precise technical line' },
+
+        // --- タッチ・技法 (6枚) ---
+        { tab: 'タッチ・技法', emoji: '📝', label: 'ラフ・重ね描き', desc: '一本の線ではなく何重にも重ねたラフ線', prompt: 'loose rough sketch lines, unrefined energetic drawing style, multiple overlapping light strokes', neg: 'single clean precise contour line' },
+        { tab: 'タッチ・技法', emoji: '✖️', label: 'ハッチング(斜線)', desc: '影を細かな斜線で表現する銅版画風', prompt: 'cross-hatching shading technique, intricate parallel intersecting fine lines for shadow', neg: 'flat unshaded lineart' },
+        { tab: 'タッチ・技法', emoji: '🌌', label: 'ドット・点描', desc: '影や線を無数の点で表現する技法', prompt: 'stippling dot technique, pointillism line art style, shadows made of tiny dots', neg: 'solid continuous lines' },
+        { tab: 'タッチ・技法', emoji: '📐', label: 'カクカクした直線', desc: '定規で引いたような直線と鋭い角', prompt: 'angular straight geometric lines, sharp corners, rigid rigid polygon style strokes', neg: 'organic rounded soft curves' },
+        { tab: 'タッチ・技法', emoji: '🌀', label: 'うねる曲線', desc: 'サイケデリックで流動的な曲線の連続', prompt: 'swirling wavy curved lines, fluid continuous flowing strokes, psychedelic organic linework', neg: 'straight rigid angles' },
+        { tab: 'タッチ・技法', emoji: '⬛', label: 'ベタ(黒塗り)多め', desc: '影の部分を大胆に真っ黒に塗りつぶす', prompt: 'high contrast heavy black shadows, silhouette style lineart, chiaroscuro heavy ink spotting', neg: 'thin clean outlines with no black areas' }
+        ]
+    },
+    {
+      key: 'composition',
+      question: '構図は？',
+      desc: '画面のレイアウト・見せ方を選んでください',
+      addonPlaceholder: '例：A4縦サイズで、余白多めで、など',
+      addonChips: ['A4縦', 'A3横', '正方形', 'ポストカード', '余白多め', '全体を使って'],
+      suggestions: ['枠線あり', '四隅にモチーフ', '中央メインで', '繰り返しパターン', 'ボーダー配置', 'コーナー飾り', '見開きで使えるように', '縦長で', 'マージン広め', '主役を大きく'],
+      tabs: ['📷 構図・アングル', '✨ 画質・クオリティ'],
+      options: [
+        // --- 📷 構図・アングル ---
+        { tab: '📷 構図・アングル', emoji: '👤', label: '正面', desc: '', prompt: 'front view', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🗣️', label: '横顔', desc: '', prompt: 'profile view', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🚶', label: '後ろ姿', desc: '', prompt: 'from behind', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🖼️', label: 'バストアップ', desc: '', prompt: 'bust shot', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🧍', label: '全身', desc: '', prompt: 'full body', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🦅', label: '俯瞰', desc: '', prompt: 'bird eye view', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🐜', label: 'ローアングル', desc: '', prompt: 'low angle', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🔍', label: 'クローズアップ', desc: '', prompt: 'close up', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '📐', label: 'なめまわすアングル', desc: '', prompt: 'dutch angle', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🎥', label: '広角', desc: '', prompt: 'wide angle', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🦋', label: 'シンメトリー', desc: '', prompt: 'symmetry', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '#️⃣', label: '三分割法', desc: '', prompt: 'rule of thirds', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🔬', label: '接写', desc: '', prompt: 'macro', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🏞️', label: 'パノラマ', desc: '', prompt: 'panorama', neg: '' },
+        { tab: '📷 構図・アングル', emoji: '🐟', label: 'フィッシュアイ', desc: '', prompt: 'fisheye lens', neg: '' },
+        // --- ✨ 画質・クオリティ ---
+        { tab: '✨ 画質・クオリティ', emoji: '🏆', label: '傑作', desc: '', prompt: 'masterpiece', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '👑', label: '最高品質', desc: '', prompt: 'best quality', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '🔍', label: '高解像度', desc: '', prompt: 'high resolution', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '📺', label: '4K', desc: '', prompt: '4k', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '🎬', label: '8K', desc: '', prompt: '8k', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '✨', label: '美麗', desc: '', prompt: 'beautiful', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '📷', label: '写真品質', desc: '', prompt: 'photorealistic', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '🔬', label: '精緻', desc: '', prompt: 'highly detailed', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '👁️', label: '超細密', desc: '', prompt: 'ultra-detailed', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '🎞️', label: 'シネマティック', desc: '', prompt: 'cinematic', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '💼', label: 'プロ品質', desc: '', prompt: 'professional', neg: '' },
+        { tab: '✨ 画質・クオリティ', emoji: '🏅', label: '受賞作', desc: '', prompt: 'award winning', neg: '' }]
+    },
+    {
+      key: 'touch',
+      question: 'タッチ・雰囲気は？',
+      desc: 'イラストの画風・世界観を選んでください',
+      addonPlaceholder: '例：北欧テイスト、大正ロマン風、など',
+      addonChips: ['北欧テイスト', '大正ロマン', '和風', 'ファンタジー', 'ボタニカル', 'レトロ・ヴィンテージ'],
+      suggestions: ['スカンジナビアン', 'アールヌーボー', 'アール・デコ', 'ポップアート', '東欧民芸', 'ネイティブアメリカン', 'バロック風', 'ジブリ風', 'ディズニー風', 'アジアンエスニック'],
+      tabs: ['雰囲気・ムード', 'アートスタイル', '質感・光', '表現・エフェクト', '時代・文化', '特殊・ユニーク'],
+      options: [
+        // --- 雰囲気・ムード (6枚) ---
+        { tab: '雰囲気・ムード', emoji: '🐣', label: 'ゆるかわ系', desc: '丸っこくて親しみやすい雰囲気', prompt: 'kawaii cute illustration style, rounded friendly forms, adorable charming character design, soft approachable aesthetic', neg: 'realistic, dark, angular' },
+        { tab: '雰囲気・ムード', emoji: '📚', label: '絵本・キッズ', desc: '温かみのある子供向け絵本風', prompt: 'picture book storybook illustration style, warm charming line art, children\'s book character design', neg: 'photorealistic, dark, complex' },
+        { tab: '雰囲気・ムード', emoji: '🦇', label: 'ダーク・ゴシック', desc: '少し不気味で美しい耽美な雰囲気', prompt: 'dark gothic illustration style, eerie mysterious mood, macabre beautiful lineart', neg: 'cheerful, bright, pop' },
+        { tab: '雰囲気・ムード', emoji: '🦄', label: '夢かわ・ゆめかわ', desc: 'ふわふわした夢のような可愛さ', prompt: 'yume kawaii dreamy cute aesthetic, magical girl style, soft fluffy dreamy atmosphere', neg: 'harsh, realistic, gritty' },
+        { tab: '雰囲気・ムード', emoji: '👻', label: 'ホラー・不気味', desc: 'ゾクッとする怖い雰囲気', prompt: 'creepy horror style illustration, unsettling eerie lineart, spooky atmospheric drawing', neg: 'cute, happy, colorful' },
+        { tab: '雰囲気・ムード', emoji: '🦢', label: 'エレガント・上品', desc: '大人っぽく洗練された美しい雰囲気', prompt: 'elegant refined illustration, sophisticated graceful aesthetic, mature beautiful lineart', neg: 'childish, rough, cartoonish' },
+
+        // --- アートスタイル (6枚) ---
+        { tab: 'アートスタイル', emoji: '👁️', label: 'リアル系(写実的)', desc: '骨格や構造を正確に描くリアルな画風', prompt: 'realistic detailed line art style, accurate anatomical proportions, precise fine art illustration technique', neg: 'cartoon, kawaii, simplified' },
+        { tab: 'アートスタイル', emoji: '🎨', label: 'アニメ・マンガ風', desc: '日本のアニメや漫画の定番スタイル', prompt: 'anime manga illustration style, Japanese comic book lineart, cel-shaded contour style', neg: 'realistic, abstract' },
+        { tab: 'アートスタイル', emoji: '💥', label: 'アメコミ風', desc: '海外コミックのような濃い陰影', prompt: 'American comic book style, western comic illustration, dynamic superhero comic lineart', neg: 'delicate, soft, shoujo manga' },
+        { tab: 'アートスタイル', emoji: '🌿', label: 'アール・ヌーヴォー', desc: 'ミュシャ風の流麗で装飾的なスタイル', prompt: 'art nouveau illustration style, Alphonse Mucha inspired, elegant organic flowing lines', neg: 'simple, geometric, modern' },
+        { tab: 'アートスタイル', emoji: '🌊', label: '浮世絵・和風版画', desc: '日本の伝統的な版画スタイル', prompt: 'Ukiyo-e Japanese woodblock print style, traditional Japanese art aesthetic, Edo period lineart', neg: 'western comic, modern anime' },
+        { tab: 'アートスタイル', emoji: '👶', label: 'チビキャラ(SD)', desc: '頭が大きく体が小さいデフォルメ', prompt: 'chibi super deformed style, cute mini character illustration, big head small body proportion', neg: 'realistic proportion, tall' },
+
+        // --- 質感・光 (6枚) ---
+        { tab: '質感・光', emoji: '☁️', label: 'ふんわり・柔らか', desc: '全体的に柔らかく優しい質感', prompt: 'soft gentle atmosphere, fluffy cozy mood, tender delicate illustration', neg: 'sharp, high contrast, aggressive' },
+        { tab: '質感・光', emoji: '⚡', label: 'シャープ・鋭い', desc: 'キリッとしたかっこいい質感', prompt: 'sharp crisp precise aesthetic, high tension dynamic mood, edgy cool illustration', neg: 'soft, blurry, rounded' },
+        { tab: '質感・光', emoji: '✨', label: 'キラキラ・輝き', desc: '星や光が瞬くような魔法の質感', prompt: 'sparkling glittering atmosphere, magical glowing effects, radiant luminous mood', neg: 'dull, flat, matte' },
+        { tab: '質感・光', emoji: '🕰️', label: 'アンティーク・退廃', desc: '古びたノスタルジックな雰囲気', prompt: 'antique vintage aesthetic, faded nostalgic mood, melancholic beautiful atmosphere', neg: 'modern, futuristic, pristine' },
+        { tab: '質感・光', emoji: '⚙️', label: 'スチームパンク風', desc: '歯車と蒸気機関のレトロフューチャー', prompt: 'steampunk aesthetic, industrial mechanical mood, Victorian sci-fi atmosphere', neg: 'clean, natural, organic' },
+        { tab: '質感・光', emoji: '🌃', label: 'サイバーパンク風', desc: 'ネオンと機械が交差する近未来', prompt: 'cyberpunk futuristic aesthetic, high-tech dystopian mood, sci-fi atmospheric lineart', neg: 'historical, natural, rustic' },
+
+        // --- 表現・エフェクト (6枚) ---
+        { tab: '表現・エフェクト', emoji: '🏃', label: '躍動感・アクション', desc: '動きのあるダイナミックなポーズや風', prompt: 'dynamic action pose, highly kinetic energetic composition, motion lines and movement', neg: 'static, stiff, boring' },
+        { tab: '表現・エフェクト', emoji: '🧘', label: '静寂・落ち着き', desc: '時が止まったような静かな表現', prompt: 'quiet peaceful atmosphere, calm serene mood, still tranquil illustration', neg: 'action, chaotic, noisy' },
+        { tab: '表現・エフェクト', emoji: '🎭', label: 'ドラマチック', desc: '感情を揺さぶる劇的なライティングや構図', prompt: 'dramatic emotional atmosphere, cinematic lighting effect, intense storytelling mood', neg: 'flat, emotionless, plain' },
+        { tab: '表現・エフェクト', emoji: '📐', label: '幾何学的・整然', desc: '計算されたように規則正しい表現', prompt: 'structured geometric aesthetic, organized orderly composition, precise mathematical beauty', neg: 'organic, chaotic, messy' },
+        { tab: '表現・エフェクト', emoji: '🌀', label: 'カオス・混沌', desc: 'シュルレアリスムのような不思議な表現', prompt: 'chaotic surreal atmosphere, disorganized wild composition, psychedelic bizarre mood', neg: 'organized, neat, simple' },
+        { tab: '表現・エフェクト', emoji: '🤍', label: 'ミニマル・余白', desc: '無駄を削ぎ落とした洗練された表現', prompt: 'minimalist zen aesthetic, wabi-sabi simple beauty, highly restrained elegant composition', neg: 'cluttered, excessive details' },
+
+        // --- 時代・文化 (6枚) ---
+        { tab: '時代・文化', emoji: '👘', label: '大正ロマン', desc: '和洋折衷のレトロモダンな世界観', prompt: 'Taisho roman aesthetic, retro Japanese early 20th century style, nostalgic Japanese-Western blend', neg: 'futuristic, sci-fi' },
+        { tab: '時代・文化', emoji: '📺', label: '昭和レトロ', desc: '70〜80年代の懐かしいポップカルチャー', prompt: 'Showa retro aesthetic, vintage 1970s 1980s Japanese pop culture style, nostalgic old-school manga', neg: 'modern contemporary' },
+        { tab: '時代・文化', emoji: '🏰', label: '中世ヨーロッパ', desc: '騎士や魔法使いがいるファンタジー世界', prompt: 'medieval European aesthetic, fantasy RPG style, historical fantasy atmosphere', neg: 'modern urban' },
+        { tab: '時代・文化', emoji: '🌲', label: '北欧風・フォーク', desc: '温かみのある北欧の民芸品スタイル', prompt: 'Scandinavian Nordic design aesthetic, folk art style, cozy hygge atmosphere', neg: 'industrial, futuristic' },
+        { tab: '時代・文化', emoji: '🌴', label: 'トロピカル・南国', desc: '明るく陽気でエキゾチックな世界', prompt: 'tropical Hawaiian aesthetic, bright sunny cheerful mood, exotic island atmosphere', neg: 'cold, winter, dark' },
+        { tab: '時代・文化', emoji: '🏮', label: 'オリエンタル・中華', desc: '東洋の神秘的で細やかな世界観', prompt: 'oriental Chinese aesthetic, traditional Asian fantasy mood, intricate exotic atmosphere', neg: 'western modern' },
+
+        // --- 特殊・ユニーク (6枚) ---
+        { tab: '特殊・ユニーク', emoji: '🃏', label: 'タロット・トランプ', desc: 'カードの絵柄のような神秘的な枠組み', prompt: 'tarot card illustration style, playing card design aesthetic, mystic symbolic framing', neg: 'standard perspective' },
+        { tab: '特殊・ユニーク', emoji: '⛪', label: 'ステンドグラス風', desc: 'ガラスの破片を繋ぎ合わせたような表現', prompt: 'stained glass window style, segmented colored glass aesthetic, intricate leading lines', neg: 'soft blended shading' },
+        { tab: '特殊・ユニーク', emoji: '✂️', label: '切り絵・ペーパー', desc: '紙を重ねたような平面的で影のある表現', prompt: 'paper cutout layered style, kirigami aesthetic, flat papercraft illustration', neg: '3D realistic rendering' },
+        { tab: '特殊・ユニーク', emoji: '🧩', label: 'だまし絵・錯視', desc: 'エッシャーのような不思議な空間', prompt: 'optical illusion surrealism style, Escher inspired impossible geometry, mind-bending aesthetic', neg: 'realistic physics, normal perspective' },
+        { tab: '特殊・ユニーク', emoji: '🧸', label: 'ぬいぐるみ・布風', desc: 'すべてが布や綿でできているような表現', prompt: 'plush toy aesthetic, stuffed animal style, soft fabric texture appearance', neg: 'hard metallic, shiny plastic' },
+        { tab: '特殊・ユニーク', emoji: '👾', label: 'レトロゲーム(ドット)', desc: 'カクカクしたピクセルアート風', prompt: 'pixel art inspired aesthetic, 8-bit retro video game style, blocky digital nostalgia', neg: 'smooth vector curves, high res' }
+        ]
+    },
+    {
+      key: 'tool',
+      question: '使うAIツールは？',
+      desc: 'ツールによってプロンプトの最適な形式が変わります。選ぶと自動で形式を調整します。',
+      addonPlaceholder: '例：スタイル参照あり、シード値固定、LoRAを使用、など',
+      suggestions: ['スタイル参照あり（Sref）', 'キャラ参照あり（Cref）', '参照画像あり（iref）', 'ネガティブプロンプト重視', 'LoRAを使用', 'img2imgで調整', 'アップスケール後使用', 'シード値を固定', '複数枚比較して選ぶ', 'ControlNet活用'],
+      options: [
+        { emoji:'🎨', label:'Midjourney',                  desc:'キーワード形式が最適・高品質',          promptStyle:'keyword', prompt:'' },
+        { emoji:'⚙️', label:'Stable Diffusion / NovelAI', desc:'キーワード形式が最適・カスタマイズ性高', promptStyle:'keyword', prompt:'' },
+        { emoji:'🤖', label:'ChatGPT / DALL-E 3',          desc:'自然な文章指示が得意',                  promptStyle:'natural', prompt:'' },
+        { emoji:'💎', label:'Gemini / Imagen',             desc:'自然な文章指示が得意',                  promptStyle:'natural', prompt:'' },
+        { emoji:'🔥', label:'Adobe Firefly',               desc:'文章・キーワード両対応',                promptStyle:'natural', prompt:'' }]
+    }];
+
+  // ═══════════════════════════════════════════════════════
+  // 状態管理
+  // ═══════════════════════════════════════════════════════
+  let selections = {};
+  let stepExtras = {};
+  let currentStepKey = ALL_STEPS[0].key;
+
+  function getVisibleSteps() {
+    return ALL_STEPS.filter(s => !s.showIf || s.showIf(selections));
+  }
+
+  const totalCombinations = ALL_STEPS.reduce((acc, s) => acc * s.options.length, 1);
+  document.getElementById('totalCombo').textContent = totalCombinations.toLocaleString('ja-JP');
+
+  // ═══════════════════════════════════════════════════════
+  // ステップ画面を生成
+  // ═══════════════════════════════════════════════════════
+  const stepContainer = document.getElementById('stepContainer');
+
+  // ── 辞典定義マップ（forEach内で参照されるためループ前に定義）──
+  const DICT_BTN = {
+    theme: { icon: '🎨', label: 'テーマ辞典から選ぶ（詳細モチーフ）' },
+  };
+
+  ALL_STEPS.forEach((step) => {
+    const screen = document.createElement('div');
+    screen.className = 'step-screen';
+    screen.id = `step-${step.key}`;
+
+    screen.innerHTML = `
+      <div class="step-header">
+        <div class="step-number" id="stepnum-${step.key}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <span>STEP ? / ?</span>
+        <button onclick="clearStepSelection('${step.key}', this)" style="background:var(--panel-soft); border:1px solid var(--border); border-radius:4px; padding:4px 10px; font-size:12px; font-weight:bold; color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; gap:4px; transition:all 0.2s;" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--panel-soft)'">
+          <span style="font-size:10px">✖</span> クリア
+        </button>
+      </div>
+        <div class="step-question">${step.question}</div>
+        <div class="step-desc">${step.desc}</div>
+      </div>
+      
+      ${step.tabs ? `
+      <div class="step-subtabs" id="subtabs-${step.key}">
+        ${step.tabs.map((t, i) => `<button class="step-subtab-btn ${i===0?'active':''}" onclick="filterStepOptions('${step.key}', '${t}', this)">${t}</button>`).join('')}
+      </div>
+      ` : ''}
+      <div class="options-grid">
+        ${step.options.map((opt, i) => `
+          <div class="option-card${opt.isConvert ? ' convert-card' : ''}" id="opt-${step.key}-${i}" data-tab="${opt.tab || ''}" onclick="selectOption('${step.key}',${i})">
+            <span class="option-emoji">${opt.emoji}</span>
+            <div class="option-label">${opt.label}${opt.isConvert ? '<span class="opt-badge-convert">📎 画像を添付</span>' : ''}</div>
+            <div class="option-desc">${opt.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+      ${step.hasDictionary ? (() => {
+        const cfg = DICT_BTN[step.dictionaryType] || { icon:'📖', label:'辞典から選ぶ' };
+        const sel = selections[step.key];
+        const btnLabel = sel?._dict ? `${sel.emoji} ${sel.label} ✓` : `${cfg.icon} ${cfg.label}`;
+        return `<button class="btn-open-dict${sel?._dict ? ' selected' : ''}" id="dict-btn-${step.key}" onclick="showDict('${step.key}','${step.dictionaryType}')">${btnLabel}</button>`;
+      })() : ''}
+      <div class="step-addon-wrap">
+        <span class="step-addon-label">✏️ 追記（任意）</span>
+        <input type="text" class="step-addon-input" id="addon-${step.key}"
+               placeholder="${step.addonPlaceholder || 'キーワードを追加…'}"
+               oninput="onAddonInput('${step.key}', this.value)"
+               >
+        
+      </div>
+      ${step.addonChips?.length ? `<button class="btn-suggest" id="suggest-btn-${step.key}" onclick="toggleSuggest('${step.key}')">💡 候補から選ぶ ▾</button><div class="suggest-panel" id="suggest-${step.key}" style="display:none"><div class="suggest-panel-label">💬 タップして追記欄に追加：</div><div class="suggest-chips">${step.addonChips.map(c=>`<span class="suggest-chip" onclick="pickSuggestion('${step.key}','${c}')">${c}</span>`).join('')}</div></div>` : ''}
+      ${step.suggestions?.length ? `<button class="btn-suggest" id="suggmore-btn-${step.key}" onclick="toggleSuggMore('${step.key}')">💡 もっとアイデア ▾</button><div class="suggest-panel" id="suggmore-${step.key}" style="display:none"><div class="suggest-panel-label">💬 タップして追記欄に追加：</div><div class="suggest-chips">${step.suggestions.map(s=>`<span class="suggest-chip" onclick="pickSuggMore('${step.key}','${s}')">${s}</span>`).join('')}</div></div>` : ''}
+      <div class="nav-buttons">
+        <button class="btn btn-back" id="back-btn-${step.key}" onclick="goBack()" style="display:${ALL_STEPS[0].key===step.key?'none':''}">← 戻る</button>
+        <button class="btn btn-next" id="next-btn-${step.key}" onclick="goNext()">
+          ${step.key === ALL_STEPS[ALL_STEPS.length-1].key ? 'プロンプトを生成 ✨' : '次へ →'}
+        </button>
+      </div>
+    `;
+    stepContainer.appendChild(screen);
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // ナビゲーション
+  // ═══════════════════════════════════════════════════════
+  function getVisibleKeys() { return getVisibleSteps().map(s => s.key); }
+
+  function goNext() {
+    const visible = getVisibleKeys();
+    const idx = visible.indexOf(currentStepKey);
+    if (idx < visible.length - 1) navigateTo(visible[idx + 1]);
+    else showResult();
+  }
+
+  function goBack() {
+    const visible = getVisibleKeys();
+    const idx = visible.indexOf(currentStepKey);
+    if (idx > 0) navigateTo(visible[idx - 1]);
+  }
+
+  function navigateTo(key) {
+    document.getElementById(`step-${currentStepKey}`).classList.remove('active');
+    currentStepKey = key;
+    document.getElementById(`step-${key}`).classList.add('active');
+    document.getElementById('resultScreen').style.display = 'none';
+    updateProgress();
+    restoreStepState(key);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function goToStep(key) { navigateTo(key); }
+  function onAddonInput(key, value) { stepExtras[key] = value; }
+  function toggleSuggest(key) {
+    const panel = document.getElementById('suggest-' + key);
+    const btn   = document.getElementById('suggest-btn-' + key);
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.textContent = isOpen ? '💡 候補から選ぶ ▾' : '💡 候補を閉じる ▴';
+  }
+  function toggleSuggMore(key) {
+    const panel = document.getElementById('suggmore-' + key);
+    const btn   = document.getElementById('suggmore-btn-' + key);
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (btn) btn.textContent = isOpen ? '💡 もっとアイデア ▾' : '💡 もっとアイデア ▴';
+  }
+  function pickSuggestion(key, text) {
+    const el  = document.getElementById('addon-' + key);
+    const cur = el.value.trim();
+    el.value  = cur ? cur + '、' + text : text;
+    onAddonInput(key, el.value);
+    const panel = document.getElementById('suggest-' + key);
+    if (panel) panel.style.display = 'none';
+    const btn = document.getElementById('suggest-btn-' + key);
+    if (btn) btn.textContent = '💡 候補から選ぶ ▾';
+  }
+  function pickSuggMore(key, text) {
+    const el  = document.getElementById('addon-' + key);
+    const cur = el.value.trim();
+    el.value  = cur ? cur + '、' + text : text;
+    onAddonInput(key, el.value);
+    const panel = document.getElementById('suggmore-' + key);
+    if (panel) panel.style.display = 'none';
+    const btn = document.getElementById('suggmore-btn-' + key);
+    if (btn) btn.textContent = '💡 もっとアイデア ▾';
+  }
+
+  function restoreStepState(key) {
+    const step = ALL_STEPS.find(s => s.key === key);
+    if (!step) return;
+    const sel = selections[key];
+    if (sel !== undefined) {
+      step.options.forEach((_, i) => {
+        const el = document.getElementById(`opt-${key}-${i}`);
+        if (el) el.classList.toggle('selected', i === sel._idx);
+      });
+      document.getElementById(`next-btn-${key}`).disabled = false;
+    }
+    if (stepExtras[key]) {
+      const el = document.getElementById('addon-' + key);
+      if (el) el.value = stepExtras[key];
+    }
+    if (step.hasDictionary) {
+      const dictSel = selections[key];
+      if (dictSel?._dict) {
+        const btn = document.getElementById('dict-btn-' + key);
+        if (btn) { btn.innerHTML = `${dictSel.emoji} ${dictSel.label} ✓`; btn.classList.add('selected'); }
+      }
+    }
+  }
+
+  function updateProgress() {
+    const visible = getVisibleSteps();
+    const idx = visible.findIndex(s => s.key === currentStepKey);
+    
+    const isNotEmpty = (v) => v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : (v instanceof Set ? v.size > 0 : (typeof v === 'object' ? Object.keys(v).length > 0 : String(v).trim() !== '')));
+
+    const labelsEl = document.getElementById('progressLabels');
+    if (labelsEl) {
+      labelsEl.innerHTML = '';
+      visible.forEach((s, i) => {
+        const hasValue = isNotEmpty(selections[s.key]) || isNotEmpty(stepExtras[s.key]);
+        const cls = (s.key === currentStepKey ? 'active ' : '') + (hasValue ? 'done' : '');
+
+        const el = document.createElement('div');
+        el.className = 'progress-label ' + cls;
+        el.innerHTML = `<span style="font-size:10px;opacity:0.6;min-width:18px">${i+1}</span>${s.question.replace('？','')}`;
+        el.onclick = () => goToStep(s.key);
+        labelsEl.appendChild(el);
+      });
+    }
+
+    const numEl = document.getElementById(`stepnum-${currentStepKey}`);
+    if (numEl) numEl.textContent = `STEP ${idx + 1} / ${visible.length}`;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 選択処理
+  // ═══════════════════════════════════════════════════════
+  function selectOption(key, idx) {
+    const step = ALL_STEPS.find(s => s.key === key);
+
+    // --- INJECTED TOGGLE LOGIC ---
+    if (selections[key] && selections[key]._idx === idx) {
+        // Toggle off
+        if (step && step.options) {
+            step.options.forEach((_, i) => {
+                const el = document.getElementById(`opt-${key}-${i}`) || document.getElementById('opt-' + key + '-' + i);
+                if (el) {
+                    el.classList.remove('selected');
+                    if (el.classList.contains('teal-mode')) el.classList.remove('teal-mode'); // For kiriye.html
+                }
+            });
+        }
+        selections[key] = null;
+        const btn = document.getElementById(`next-btn-${key}`) || document.getElementById('next-btn-' + key);
+        if (btn) btn.disabled = true;
+        
+        if (typeof updateProgress === 'function') updateProgress();
+        
+        // For sticker.html specific logic
+        if (key === 'style') {
+            const disp = document.getElementById('dictSelectedDisplay');
+            if (disp) disp.innerHTML = '<span style="color:var(--ink-soft);font-size:13px">選択されていません</span>';
+        }
+        
+        return;
+    }
+    // --- END INJECTED TOGGLE LOGIC ---
+    step.options.forEach((_, i) => {
+      const el = document.getElementById(`opt-${key}-${i}`);
+      if (el) el.classList.remove('selected');
+    });
+    document.getElementById(`opt-${key}-${idx}`).classList.add('selected');
+    selections[key] = { ...step.options[idx], _idx: idx };
+    document.getElementById(`next-btn-${key}`).disabled = false;
+    updateProgress();
+
+    // 変換カードを選んだら即座に変換専用画面へ
+    if (step.options[idx].isConvert) {
+      setTimeout(() => showConvertScreen(), 180);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 変換専用画面
+  // ═══════════════════════════════════════════════════════
+  let convertComplexity = 'normal';
+
+  const COMPLEXITY_MAP = {
+    simple:   'extremely simple thick bold outlines, very large easy-to-color areas, child-friendly simple shapes, maximum 5 elements, minimal fine detail, toddler-friendly coloring page',
+    normal:   'medium weight clean outlines, moderate interior detail, balanced complexity level, suitable for older children and adults',
+    detailed: 'fine detailed linework, intricate interior pattern lines, rich detail density, adult coloring book complexity, many small coloring areas',
+  };
+
+  function showConvertScreen() {
+    document.getElementById('stepContainer').querySelectorAll('.step-screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('resultScreen').style.display = 'none';
+    document.getElementById('convertScreen').style.display = 'block';
+    setComplexity('normal');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function hideConvertScreen() {
+    document.getElementById('convertScreen').style.display = 'none';
+    currentStepKey = ALL_STEPS[0].key;
+    document.getElementById(`step-${currentStepKey}`).classList.add('active');
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function setComplexity(level) {
+    convertComplexity = level;
+    ['simple','normal','detailed'].forEach(l => {
+      document.getElementById(`cx-${l}`).classList.toggle('selected', l === level);
+    });
+    updateConvertPrompt();
+  }
+
+  function updateConvertPrompt() {
+    const CONVERT_ROLE = 'Please convert the attached image into a coloring book line art page. Trace and extract only the essential outlines as clean black lines on a pure white background. Remove all colors, gradients, shading, and backgrounds completely. Every enclosed area should be clearly defined and ready to be colored in by hand or digitally. This is a printable black-and-white coloring page.';
+    const parts = [
+      'coloring book conversion from the attached image',
+      'extract outlines only',
+      'pure black lines on pure white background',
+      'remove all color fill, shading, gradients, and background',
+      'all interior areas clearly enclosed for hand coloring',
+      COMPLEXITY_MAP[convertComplexity],
+      'printable coloring page format, high contrast black ink on white paper'];
+    document.getElementById('convertPrompt').textContent = CONVERT_ROLE + '\n\n' + parts.join(', ');
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // プロンプト生成
+  // ═══════════════════════════════════════════════════════
+  const ROLE_PROMPT = 'Create a coloring book page illustration: pure black ink outlines on a pure white background only. No gray tones, no shading, no color fills, no gradients anywhere. All lines must be clean crisp black outlines. All interior areas must be clearly enclosed and ready to be colored in by hand or digitally. This is a printable black-and-white coloring page.';
+
+
+  const BASE_NEGATIVE = 'color, colored, shading, gradient fill, blurry, low quality, messy lines, rough sketch, photographic';
+
+  function buildNegativePrompt() {
+    return BASE_NEGATIVE;
+  }
+
+  function buildNegUsageHint() {
+    const tool = selections['tool'];
+    if (!tool) return '💡 AIツールを選択すると使い方ガイドが表示されます';
+    const label = tool.label || '';
+    if (label.includes('Midjourney')) {
+      return '📌 <b>Midjourney：</b>メインプロンプト末尾に <code style="background:#fee2e2;padding:1px 5px;border-radius:3px;font-size:10px;">--no [このテキスト]</code> を追記してください';
+    } else if (label.includes('Stable') || label.includes('NovelAI')) {
+      return '📌 <b>Stable Diffusion / NovelAI：</b>ネガティブプロンプト欄にそのまま貼り付けてください';
+    } else if (label.includes('ChatGPT') || label.includes('DALL-E')) {
+      return '📌 <b>ChatGPT / DALL-E：</b>専用欄なし。メインプロンプトに「次の要素は避けてください：〜」と追記するか参考にしてください';
+    } else if (label.includes('Gemini') || label.includes('Imagen')) {
+      return '📌 <b>Gemini / Imagen：</b>メインプロンプト末尾に「以下は避けてください：〜」と追記してください';
+    } else if (label.includes('Firefly') || label.includes('Adobe')) {
+      return '📌 <b>Adobe Firefly：</b>ネガティブプロンプト欄に貼り付けるか、「〜は避けてください」と追記してください';
+    }
+    return '📌 ネガティブプロンプト欄に貼り付けるか、「〜は避けてください」とプロンプトに追記してください';
+  }
+
+  function buildMainPrompt() {
+    if (selections['theme']?.isConvert) return buildConvertPrompt();
+
+    const parts = [
+      'coloring book line art page',
+      'pure black outlines on pure white background',
+      'no color no shading no gray tones anywhere',
+      'all areas enclosed and ready to color'];
+
+    ['theme','difficulty','linestyle','composition','touch'].forEach(k => {
+      if (selections[k]?.prompt) parts.push(selections[k].prompt);
+      if (stepExtras[k]?.trim()) parts.push(stepExtras[k].trim());
+    });
+
+    parts.push('printable coloring page format, high contrast black ink on white');
+    const isNatural = selections['tool']?.promptStyle === 'natural';
+    if (isNatural) {
+      return `Create a coloring book line art page:\n` + parts.map(p => `• ${p}`).join('\n');
+    }
+    return ROLE_PROMPT + '\n\n' + parts.join(', ');
+  }
+
+  function buildConvertPrompt() {
+    const CONVERT_ROLE = 'Please convert the attached image into a coloring book line art page. Trace and extract only the essential outlines as clean black lines on a pure white background. Remove all colors, gradients, shading, and backgrounds completely. Every enclosed area should be clearly defined and ready to be colored in by hand or digitally. This is a printable black-and-white coloring page.';
+
+    const parts = [
+      'coloring book conversion from attached image',
+      'extract outlines only, pure black lines on white background',
+      'remove all color fill, shading, gradients, and background',
+      'all interior areas clearly enclosed for hand coloring'];
+
+    ['difficulty','linestyle','composition','touch'].forEach(k => {
+      if (selections[k]?.prompt) parts.push(selections[k].prompt);
+      if (stepExtras[k]?.trim()) parts.push(stepExtras[k].trim());
+    });
+    if (stepExtras['theme']?.trim()) parts.push(stepExtras['theme'].trim());
+
+    parts.push('printable coloring page format, high contrast black ink on white paper');
+    return CONVERT_ROLE + '\n\n' + parts.join(', ');
+  }
+
+// ═══════════════════════════════════════════════════════
+  // 結果表示
+  // ═══════════════════════════════════════════════════════
+  function showResult() {
+    // サマリータグ
+    const summaryEl = document.getElementById('selectedSummary');
+    summaryEl.innerHTML = getVisibleSteps()
+      .filter(s => selections[s.key])
+      .map(s => {
+        const v = selections[s.key];
+        return `<span class="summary-tag" onclick="goToStep('${s.key}')">${v.emoji || ''} ${v.label}</span>`;
+      }).join('');
+
+    document.getElementById('mainPrompt').textContent = buildMainPrompt();
+    document.getElementById('negativePrompt').textContent = buildNegativePrompt();
+    document.getElementById('negUsageHint').innerHTML = buildNegUsageHint();
+
+    renderJapaneseExplanation();
+
+    // 変換モード時の案内
+    const isConvert = selections['theme']?.isConvert;
+    let convertNoticeEl = document.getElementById('convertNotice');
+    if (!convertNoticeEl) {
+      convertNoticeEl = document.createElement('div');
+      convertNoticeEl.id = 'convertNotice';
+      convertNoticeEl.className = 'convert-notice';
+      const promptSection = document.querySelector('#resultScreen .result-section');
+      if (promptSection) promptSection.parentNode.insertBefore(convertNoticeEl, promptSection);
+    }
+    if (isConvert) {
+      convertNoticeEl.style.display = 'block';
+      convertNoticeEl.innerHTML = `<strong>📎 画像変換モードの使い方</strong>
+<ol>
+  <li>上の「メインプロンプト」をコピーする</li>
+  <li><strong>ChatGPT（GPT-4o）</strong> または <strong>Gemini</strong> を開く</li>
+  <li>線画にしたい<strong>画像を添付</strong>する</li>
+  <li>コピーしたプロンプトを<strong>貼り付けて送信</strong>する</li>
+</ol>
+💡 ネガティブプロンプトは画像変換モードでは不要です（ChatGPT/Geminiには対応していません）。`;
+    } else {
+      convertNoticeEl.style.display = 'none';
+    }
+
+    // Tips
+    const themeSel = selections['theme'];
+    const diffSel  = selections['difficulty'];
+    document.getElementById('tipsText').textContent = isConvert ?
+`📎 画像変換のコツ：
+・元画像はできるだけ明るく・くっきりしたものを使うと線が綺麗に出ます
+・人物・動物・花など輪郭がはっきりしたモチーフが最も変換しやすいです
+・ChatGPT（GPT-4o）は変換精度が高くおすすめです
+
+💡 うまくいかない場合は追加指示を：
+「太い線で」→ with thick bold outlines
+「子ども向けに」→ simplified for young children
+「細かく」→ with intricate fine details` :
+`🖨️ 印刷のコツ：A4・白黒印刷推奨。線画の鮮明さを保つため解像度300dpi以上で生成してください。
+
+🎨 おすすめ画像生成AI：
+・Midjourney（v6〜） … 線の精度が高い
+・Adobe Firefly … 塗り絵モード対応
+・DALL-E 3 / ChatGPT … 指示理解力が高い
+
+💡 ポイント：生成後、白背景・黒線が不鮮明な場合は「Increase contrast」「Sharpen lines」などの追加指示を試してください。
+
+${diffSel?.label === '超細かい' ? '⚠️ 超細かいレベルは生成AIが複雑すぎると判断してシンプルにする場合があります。その場合は「extremely intricate, maximum complexity」を繰り返し強調してください。' : ''}
+
+💡 プロンプト生成のポイント：${(() => { const t = selections['tool']; return (!t || t.promptStyle === 'keyword') ? '短いキーワードをカンマ区切りで並べると効果的（Midjourney / SD 向け）。長い説明文より単語の密度を上げる方が品質が上がりやすい。' : '自然な文章で指示する方が意図が正確に伝わる（ChatGPT / Gemini 向け）。「どんな雰囲気で作ってほしいか」を伝えるイメージで書くと◎'; })()}`;
+
+    document.getElementById('stepContainer').querySelectorAll('.step-screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('resultScreen').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderJapaneseExplanation() {
+    const el = document.getElementById('jpExplainBody');
+    if (!el) return;
+    let html = '<table class="jp-table">';
+    getVisibleSteps().forEach(s => {
+      const v = selections[s.key];
+      if (!v) return;
+      let valueHtml = `<span class="jp-chip">${v.emoji || ''} <strong>${v.label}</strong>${v.desc ? ` <small>: ${v.desc}</small>` : ''}</span>`;
+      if (stepExtras[s.key]?.trim()) {
+        valueHtml += `<span class="jp-chip addon">✏️ 追記：${stepExtras[s.key].trim()}</span>`;
+      }
+      html += `<tr><td class="jp-label">${s.question}</td><td class="jp-value">${valueHtml}</td></tr>`;
+    });
+    html += '</table>';
+    const negTerms = [
+      '× カラー・色付き（白黒線画のため）',
+      '× グレーのシェーディング・影',
+      '× グラデーション・ぼかし',
+      '× 塗りつぶし・背景色',
+      '× 写真・3Dレンダリング',
+      '× テキスト・ウォーターマーク'];
+    el.innerHTML = html;
+  }
+
+  function goBackFromResult() {
+    document.getElementById('resultScreen').style.display = 'none';
+    const visible = getVisibleKeys();
+    const lastKey = visible[visible.length - 1];
+    currentStepKey = lastKey;
+    document.getElementById(`step-${lastKey}`).classList.add('active');
+    updateProgress();
+    restoreStepState(lastKey);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // ランダム生成
+  // ═══════════════════════════════════════════════════════
+  // 旧「テーマ固定ランダム」は黄金レシピ・ガチャ（ページ末尾）に統合しました。
+  function randomAll() {
+    if (typeof window.__gachaRoll === 'function') { window.__gachaRoll(); return; }
+    stepExtras = {}; selections = {};
+    ALL_STEPS.forEach(step => {
+      if (!step.options || !step.options.length) return;
+      const idx = Math.floor(Math.random() * step.options.length);
+      selections[step.key] = { ...step.options[idx], _idx: idx };
+    });
+    showResult();
+  }
+
+  function showThemeToast(name) {
+    let el = document.getElementById('themeToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'themeToast';
+      el.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:8px 18px;border-radius:20px;font-size:14px;font-weight:bold;z-index:9999;transition:opacity 0.8s;pointer-events:none';
+      document.body.appendChild(el);
+    }
+    el.textContent = '🎲 テーマ：' + name;
+    el.style.opacity = '1';
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // コピー
+  // ═══════════════════════════════════════════════════════
+  function copyById(id, btnId) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById(btnId);
+      const orig = btn.textContent;
+      btn.textContent = 'コピー済 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // リスタート
+  // ═══════════════════════════════════════════════════════
+  function restart() {
+    selections = {};
+    stepExtras = {};
+    ALL_STEPS.forEach(step => {
+      step.options.forEach((_, i) => {
+        const el = document.getElementById(`opt-${step.key}-${i}`);
+        if (el) el.classList.remove('selected');
+      });
+      if (step.hasDictionary) {
+        const dictBtn = document.getElementById(`dict-btn-${step.key}`);
+        if (dictBtn) {
+          const cfg = DICT_BTN[step.dictionaryType] || { icon: '📖', label: '辞典から選ぶ' };
+          dictBtn.innerHTML = `${cfg.icon} ${cfg.label}`;
+          dictBtn.classList.remove('selected');
+        }
+      }
+      const addon = document.getElementById('addon-' + step.key);
+      if (addon) addon.value = '';
+    });
+    document.getElementById('resultScreen').style.display = 'none';
+    currentStepKey = ALL_STEPS[0].key;
+    document.getElementById(`step-${currentStepKey}`).classList.add('active');
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // テーマ辞典
+  // ═══════════════════════════════════════════════════════
+  const THEME_DICT = {
+    animal: [
+      { emoji:'🐕', label:'柴犬',         desc:'日本の和犬キャラクター', prompt:'cute shiba inu dog coloring page, Japanese brown dog with curled tail, detailed fur texture line art' },
+      { emoji:'🐈', label:'猫',           desc:'猫のかわいい姿', prompt:'adorable cat coloring page, feline sitting pose with detailed fur and whiskers, cat character line art' },
+      { emoji:'🐘', label:'象',           desc:'大きなゾウのぬりえ', prompt:'elephant coloring page, gentle elephant with detailed wrinkled skin texture lines, large animal illustration' },
+      { emoji:'🦋', label:'蝶々',         desc:'美しい蝶の翅のパターン', prompt:'butterfly coloring page, detailed wing pattern with symmetrical intricate wing designs, butterfly illustration line art' },
+      { emoji:'🐬', label:'イルカ',       desc:'海を跳ねるイルカ', prompt:'dolphin coloring page, leaping dolphin with ocean waves, marine life coloring illustration' },
+      { emoji:'🦁', label:'ライオン',     desc:'たてがみの立派なライオン', prompt:'lion coloring page, majestic lion with detailed flowing mane, royal animal illustration line art' },
+      { emoji:'🐼', label:'パンダ',       desc:'笹を食べるパンダ', prompt:'panda bear coloring page, cute panda eating bamboo, black and white panda illustration with bamboo grove' },
+      { emoji:'🦊', label:'狐',           desc:'ふさふさのしっぽの狐', prompt:'fox coloring page, fluffy fox with bushy tail in forest setting, detailed fur texture line art' }],
+    nature: [
+      { emoji:'🌸', label:'桜',           desc:'春の桜の花枝', prompt:'cherry blossom sakura coloring page, delicate flower branch with many blossoms and petals falling, spring botanical illustration' },
+      { emoji:'🌹', label:'バラ',         desc:'美しいバラの花束', prompt:'rose coloring page, detailed rose flowers with layered petals and thorny stems, classic botanical illustration line art' },
+      { emoji:'🌻', label:'ひまわり',     desc:'元気なひまわり畑', prompt:'sunflower field coloring page, large cheerful sunflowers with detailed petal and seed head patterns, summer botanical illustration' },
+      { emoji:'🍄', label:'きのこ',       desc:'森のきのこたち', prompt:'mushroom forest coloring page, various mushrooms with detailed cap patterns and textures, woodland fungi illustration' },
+      { emoji:'🌊', label:'波・海',       desc:'寄せ来る波の情景', prompt:'ocean waves coloring page, detailed rolling waves with foam patterns, seascape line art with intricate water flow lines' },
+      { emoji:'🗻', label:'富士山',       desc:'日本の象徴・富士山', prompt:'Mount Fuji coloring page, iconic Japanese mountain with snow cap, surrounding landscape with pine trees and clouds' },
+      { emoji:'🍁', label:'紅葉',         desc:'秋の紅葉の美しい風景', prompt:'autumn maple leaves coloring page, detailed fall foliage with variety of leaf shapes, autumn forest scene illustration' },
+      { emoji:'🌿', label:'ジャングル',   desc:'熱帯雨林の豊かな植物', prompt:'jungle tropical coloring page, dense tropical leaves and exotic plants, rainforest botanical illustration with varied leaf patterns' }],
+    fantasy: [
+      { emoji:'🐉', label:'ドラゴン',     desc:'翼を広げたドラゴン', prompt:'dragon coloring page, majestic dragon with spread wings and detailed scale patterns, fantasy creature illustration line art' },
+      { emoji:'🧚', label:'妖精',         desc:'花の中の小さな妖精', prompt:'fairy coloring page, delicate fairy with detailed wings sitting among flowers, magical fantasy illustration' },
+      { emoji:'🦄', label:'ユニコーン',   desc:'虹色のたてがみのユニコーン', prompt:'unicorn coloring page, graceful unicorn with flowing mane and detailed horn, magical creature surrounded by stars and flowers' },
+      { emoji:'🏰', label:'お城',         desc:'ファンタジーのお城', prompt:'fantasy castle coloring page, detailed architectural castle with towers and gates, fairy tale castle illustration' },
+      { emoji:'🧜', label:'人魚',         desc:'海の人魚姫', prompt:'mermaid coloring page, beautiful mermaid with detailed scaled tail, underwater scene with sea creatures and coral' },
+      { emoji:'🧙', label:'魔法使い',     desc:'魔法の杖を持つ魔法使い', prompt:'wizard coloring page, robed wizard with pointed hat and magical staff, fantasy wizard illustration with spell effects' },
+      { emoji:'⚔️', label:'騎士',         desc:'鎧をまとった騎士', prompt:'knight coloring page, armored medieval knight with detailed plate armor and sword, heroic knight illustration' },
+      { emoji:'🌙', label:'夜の魔法世界', desc:'星と月の神秘的な空', prompt:'night magical world coloring page, moon and stars with mystical clouds, fantasy night sky with crescent moon and twinkling stars pattern' }],
+    mandala: [
+      { emoji:'☸️', label:'蓮の花曼荼羅', desc:'蓮をモチーフにした曼荼羅', prompt:'lotus flower mandala coloring page, intricate circular mandala with lotus petal patterns radiating from center, meditation coloring design' },
+      { emoji:'🌺', label:'花柄曼荼羅',   desc:'様々な花のパターン曼荼羅', prompt:'floral mandala coloring page, detailed circular floral mandala with various flower motifs, decorative round pattern' },
+      { emoji:'⭐', label:'星形曼荼羅',   desc:'星をモチーフにした幾何学模様', prompt:'star mandala coloring page, geometric star-based mandala pattern with intricate layered star shapes, celestial coloring design' },
+      { emoji:'🦋', label:'蝶の曼荼羅',   desc:'蝶のシルエットを使った模様', prompt:'butterfly mandala coloring page, symmetrical mandala incorporating butterfly wing patterns, nature-inspired circular design' },
+      { emoji:'🌊', label:'波のパターン', desc:'海波・水紋の繰り返し模様', prompt:'wave pattern coloring page, Japanese wave pattern inspired repeating design, flowing water ripple textile pattern' },
+      { emoji:'🔷', label:'幾何学模様',   desc:'純粋な幾何学パターン', prompt:'geometric pattern coloring page, precise geometric repeating pattern with triangles hexagons and diamond shapes, abstract coloring design' }],
+    japanese: [
+      { emoji:'⛩️', label:'神社・鳥居',   desc:'日本の神社の情景', prompt:'Japanese shrine torii coloring page, traditional torii gate with stone lanterns and stone path, Shinto shrine illustration' },
+      { emoji:'🎎', label:'お雛様',        desc:'ひな祭りのお雛様', prompt:'Hinamatsuri doll coloring page, traditional Japanese Hina dolls in formal court dress, Girls\' Day Festival illustration' },
+      { emoji:'👘', label:'着物の女性',    desc:'美しい着物姿の女性', prompt:'kimono woman coloring page, elegant Japanese woman in detailed traditional kimono with obi, Japan beauty illustration' },
+      { emoji:'🍡', label:'和菓子',        desc:'繊細な和菓子のデザイン', prompt:'Japanese wagashi sweets coloring page, traditional Japanese confectionery with seasonal motifs, wagashi illustration line art' },
+      { emoji:'🎋', label:'竹林',          desc:'風になびく竹林', prompt:'bamboo forest coloring page, tall bamboo grove with detailed culm and leaf patterns, Japanese bamboo garden illustration' },
+      { emoji:'🐟', label:'錦鯉',          desc:'池を泳ぐ錦鯉', prompt:'koi fish coloring page, graceful koi swimming with detailed scale patterns, Japanese carp pond with lily pads illustration' }],
+  };
+
+  // ── 辞典定義マップ（ALL_DICTSはTHEME_DICTより後に定義）──
+  const ALL_DICTS = {
+    theme: {
+      title: '🎨 テーマ詳細辞典',
+      placeholder: '例：柴犬・ひまわり畑・人魚など',
+      data: THEME_DICT,
+      tabs: [
+        { key:'animal',   label:'🐾 動物' },
+        { key:'nature',   label:'🌿 自然・植物' },
+        { key:'fantasy',  label:'🧚 ファンタジー' },
+        { key:'mandala',  label:'🔯 曼荼羅・模様' },
+        { key:'japanese', label:'🌸 和風・日本' }]
+    },
+  };
+
+  // ── 辞典 JS ──
+  let currentDictStepKey = 'theme';
+  let currentDictType    = 'theme';
+  let currentDictTab     = 'animal';
+
+  function showDict(stepKey, type) {
+    currentDictStepKey = stepKey;
+    currentDictType    = type;
+    const def = ALL_DICTS[type];
+    if (!def) return;
+    document.getElementById('dictTitle').textContent = def.title;
+    document.getElementById('dictCustomInput').placeholder = def.placeholder || '';
+    document.getElementById('dictCustomInput').value = '';
+    currentDictTab = def.tabs[0].key;
+    renderDictTabButtons();
+    renderDictGrid(currentDictTab);
+    document.getElementById('styleDictOverlay').style.display = 'flex';
+  }
+
+  function closeDict() { document.getElementById('styleDictOverlay').style.display = 'none'; }
+  function closeDictOnBg(e) { if (e.target === document.getElementById('styleDictOverlay')) closeDict(); }
+
+  function renderDictTabButtons() {
+    const def = ALL_DICTS[currentDictType];
+    if (!def) return;
+    document.getElementById('dictTabs').innerHTML = def.tabs.map(t =>
+      `<button class="dict-tab${t.key === currentDictTab ? ' active' : ''}" onclick="switchDictTab('${t.key}')">${t.label}</button>`
+    ).join('');
+  }
+
+  function switchDictTab(tab) {
+    currentDictTab = tab;
+    renderDictTabButtons();
+    renderDictGrid(tab);
+  }
+
+  function renderDictGrid(tab) {
+    const def   = ALL_DICTS[currentDictType];
+    const items = (def?.data || {})[tab] || [];
+    document.getElementById('dictBody').innerHTML = `
+      <div class="style-dict-grid">
+        ${items.map(item => `
+          <div class="dict-style-card" onclick="selectFromDict('${item.label}', '${item.emoji}', \`${item.prompt}\`)">
+            <span class="dict-style-emoji">${item.emoji}</span>
+            <div class="dict-style-label">${item.label}</div>
+            ${item.desc ? `<div class="dict-style-desc">${item.desc}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  function selectFromDict(label, emoji, prompt) {
+    selections[currentDictStepKey] = { label, emoji, prompt, _idx: -1, _dict: true };
+    closeDict();
+    const btn = document.getElementById('dict-btn-' + currentDictStepKey);
+    if (btn) { btn.innerHTML = `${emoji} ${label} ✓`; btn.classList.add('selected'); }
+    const nextBtn = document.getElementById('next-btn-' + currentDictStepKey);
+    if (nextBtn) nextBtn.disabled = false;
+    updateProgress();
+  }
+
+  function applyDictCustom() {
+    const val = document.getElementById('dictCustomInput').value.trim();
+    if (!val) return;
+    selectFromDict(val, '✏️', val);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // 初期化
+  // ═══════════════════════════════════════════════════════
+  document.getElementById(`step-${currentStepKey}`).classList.add('active');
+  updateProgress();
+
+  
+
+function clearDictSelection() {
+    if (typeof currentDictStepKey !== 'undefined' && currentDictStepKey) {
+        const btn = document.getElementById('step-' + currentDictStepKey) || document.body;
+        if (typeof clearStepSelection === 'function') {
+            clearStepSelection(currentDictStepKey, btn);
+        }
+        
+        // Also clear the dict button display if it exists
+        const dictBtn = document.getElementById('dict-btn-' + currentDictStepKey);
+        if (dictBtn) {
+            const def = typeof ALL_DICTS !== 'undefined' && typeof currentDictType !== 'undefined' ? ALL_DICTS[currentDictType] : null;
+            if (def && def.title) {
+                // Try to extract original label or use default
+                dictBtn.innerHTML = def.title.replace(/辞典.*/, '辞典から選ぶ');
+            } else {
+                dictBtn.innerHTML = '📖 辞典から選ぶ';
+            }
+            dictBtn.classList.remove('selected');
+        }
+    }
+    closeDict();
+}
+
+
+// --- 2-STEP DICT SELECTION LOGIC ---
+window.tempDictSelection = null;
+
+function renderDictGrid(tab) {
+    const def   = ALL_DICTS[currentDictType];
+    const items = (def?.data || {})[tab] || [];
+    document.getElementById('dictBody').innerHTML = `
+      <div class="style-dict-grid">
+        ${items.map(item => `
+          <div class="dict-style-card" onclick="previewFromDict('${item.label}', '${item.emoji}', \`${item.prompt}\`, this)">
+            <span class="dict-style-emoji">${item.emoji}</span>
+            <div class="dict-style-label">${item.label}</div>
+            ${item.desc ? `<div class="dict-style-desc">${item.desc}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>`;
+}
+
+function previewFromDict(label, emoji, prompt, el) {
+    window.tempDictSelection = { label, emoji, prompt };
+    
+    // Update UI highlights
+    const container = document.getElementById('dictBody');
+    container.querySelectorAll('.dict-style-card').forEach(c => {
+        c.style.border = '2px solid transparent';
+        c.style.background = 'var(--panel)';
+        // Reset border for custom ones if they were 2px solid var(--border)
+    });
+    
+    if (el) {
+        el.style.border = '2px solid var(--accent)';
+        el.style.background = 'var(--accent-soft)';
+    }
+    
+    // Update preview text
+    const preview = document.getElementById('dictSelectionPreview');
+    if (preview) {
+        preview.innerHTML = `選択中：<span style="color:var(--accent);">${emoji} ${label}</span>`;
+    }
+}
+
+function previewDictCustom(val) {
+    if (!val.trim()) {
+        window.tempDictSelection = null;
+        const preview = document.getElementById('dictSelectionPreview');
+        if (preview) preview.innerHTML = `選択中：<span style="color:var(--ink-soft); font-weight:normal;">未選択</span>`;
+        
+        const container = document.getElementById('dictBody');
+        container.querySelectorAll('.dict-style-card').forEach(c => {
+            c.style.border = '2px solid transparent';
+            c.style.background = 'var(--panel)';
+        });
+        return;
+    }
+    
+    window.tempDictSelection = { label: val.trim(), emoji: '✏️', prompt: val.trim() };
+    
+    // Remove highlights
+    const container = document.getElementById('dictBody');
+    container.querySelectorAll('.dict-style-card').forEach(c => {
+        c.style.border = '2px solid transparent';
+        c.style.background = 'var(--panel)';
+    });
+    
+    // Update preview text specifically for custom input
+    const preview = document.getElementById('dictSelectionPreview');
+    if (preview) {
+        preview.innerHTML = `選択中：<span style="color:var(--accent);">✏️ ${val.trim()}</span>`;
+    }
+}
+
+function showDict(stepKey, type) {
+    currentDictStepKey = stepKey;
+    currentDictType    = type;
+    const def = ALL_DICTS[type];
+    if (!def) return;
+    document.getElementById('dictTitle').textContent = def.title;
+    const customInput = document.getElementById('dictCustomInput');
+    if (customInput) {
+        customInput.placeholder = def.placeholder || '';
+        customInput.value = '';
+    }
+    currentDictTab = def.tabs[0].key;
+    
+    // Reset preview state
+    window.tempDictSelection = null;
+    const preview = document.getElementById('dictSelectionPreview');
+    if (preview) preview.innerHTML = `選択中：<span style="color:var(--ink-soft); font-weight:normal;">未選択</span>`;
+    
+    renderDictTabButtons();
+    renderDictGrid(currentDictTab);
+    document.getElementById('styleDictOverlay').style.display = 'flex';
+}
+
+function confirmDictSelection() {
+    if (!window.tempDictSelection) {
+        // If nothing is selected, check if there is custom input that wasn't registered
+        const val = document.getElementById('dictCustomInput') ? document.getElementById('dictCustomInput').value.trim() : '';
+        if (val) {
+            window.tempDictSelection = { label: val, emoji: '✏️', prompt: val };
+        } else {
+            // Otherwise just close
+            closeDict();
+            return;
+        }
+    }
+    
+    const { label, emoji, prompt } = window.tempDictSelection;
+    
+    // Proceed with the original selection logic
+    selections[currentDictStepKey] = { label, emoji, prompt, _idx: -1, _dict: true };
+    closeDict();
+    
+    const btn = document.getElementById('dict-btn-' + currentDictStepKey);
+    if (btn) { 
+        btn.innerHTML = `${emoji} ${label} ✓`; 
+        btn.classList.add('selected'); 
+    }
+    
+    const nextBtn = document.getElementById('next-btn-' + currentDictStepKey);
+    if (nextBtn) nextBtn.disabled = false;
+    
+    if (typeof updateComboCount === 'function') updateComboCount();
+    if (typeof updateProgress === 'function') updateProgress();
+}
+
+// Override original selectFromDict and applyDictCustom just in case they are called elsewhere
+function selectFromDict(label, emoji, prompt) {
+    previewFromDict(label, emoji, prompt, null);
+    confirmDictSelection();
+}
+function applyDictCustom() {
+    confirmDictSelection();
+}
+
+// --- CLEAR SELECTION LOGIC ---
+window.clearStepSelection = function(stepKey, btn) {
+    if (!stepKey) return;
+    if (window.selections && window.selections[stepKey] !== undefined) window.selections[stepKey] = null;
+    const screen = btn.closest('.step-screen');
+    if (screen) {
+        screen.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected', 'teal-mode'));
+    }
+    const nextBtn = document.getElementById('next-btn-' + stepKey) || document.getElementById(`next-btn-${stepKey}`);
+    if (nextBtn) nextBtn.disabled = true;
+    if (typeof updateProgress === 'function') updateProgress();
+    
+    // Custom logic clears
+    if (stepKey === 'cardtype') {
+        const cardScreen = document.getElementById('screen-card');
+        if (cardScreen) {
+            const cont = cardScreen.querySelector('.card-custom-container');
+            if (cont) cont.innerHTML = '<div class="card-type-hint">← まずSTEP 1でカード種類を選んでください</div>';
+        }
+    }
+    if (stepKey === 'style') {
+        const disp = document.getElementById('dictSelectedDisplay');
+        if (disp) disp.innerHTML = '<span style="color:var(--ink-soft);font-size:13px">選択されていません</span>';
+    }
+};
+
+</script>
+  <script></script>
+<script>
+  window.filterStepOptions = function(stepKey, tabName, event) {
+    const container = document.getElementById('subtabs-' + stepKey);
+    if (container) {
+      container.querySelectorAll('.step-subtab-btn').forEach(btn => btn.classList.remove('active'));
+      if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+      } else {
+        const btns = Array.from(container.querySelectorAll('.step-subtab-btn'));
+        const targetBtn = btns.find(b => (b.innerText || b.textContent || '').trim() === tabName);
+        if (targetBtn) targetBtn.classList.add('active');
+      }
+    }
+    const step = ALL_STEPS.find(s => s.key === stepKey);
+    if (step && step.options) {
+      step.options.forEach((opt, i) => {
+        const el = document.getElementById('opt-' + stepKey + '-' + i);
+        if (el) {
+          if (tabName === 'すべて' || opt.tab === tabName) {
+            el.style.display = 'block';
+          } else {
+            el.style.display = 'none';
+          }
+        }
+      });
+    }
+  };
+
+
+  // Initialize tabs on load
+  setTimeout(() => {
+    if (typeof ALL_STEPS !== 'undefined') {
+      ALL_STEPS.forEach(step => {
+        if (step.tabs && step.tabs.length > 0) {
+          filterStepOptions(step.key, step.tabs[0], null);
+        }
+      });
+    }
+  }, 100);
+
+</script>
+
+<!-- ✨ 黄金レシピ・ガチャ（軸ガチャ方式 / lineart）軸＝テーマ群 × タッチ × 線 -->
+<style>
+  .btn-random-header.gacha-btn-header{background:linear-gradient(135deg,#f59e0b,#ef4444)!important;color:#fff;border:none;box-shadow:0 4px 12px rgba(245,158,11,.35);white-space:nowrap}
+  .btn-random-header.gacha-btn-header:hover{filter:brightness(1.08);transform:scale(1.04)}
+  .btn-gacha-another{background:linear-gradient(135deg,#f59e0b,#ef4444)!important;color:#fff!important;border-color:transparent!important}
+  .btn-gacha-another:hover{filter:brightness(1.08)}
+  .gacha-panel{background:linear-gradient(135deg,#fffbeb 0%,#fff 60%);border:2px solid #f59e0b;border-radius:16px;padding:18px 20px;margin-bottom:20px;text-align:left}
+  .gacha-name{font-size:22px;font-weight:900;color:#92400e;line-height:1.4}
+  .gacha-rarity{font-size:15px;color:#f59e0b;letter-spacing:2px;margin-left:6px}
+  .gacha-sub{font-size:12.5px;color:#78716c;margin-top:4px}
+  .gacha-axes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .gacha-axis{display:inline-flex;align-items:center;gap:6px;background:#fff;border:2px solid #e7e5e4;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:700;color:#57534e;cursor:pointer;transition:.15s;user-select:none}
+  .gacha-axis:hover{border-color:#f59e0b}
+  .gacha-axis.locked{background:#fef3c7;border-color:#f59e0b;color:#92400e}
+  .gacha-axis .lk{font-size:11px;opacity:.5}
+  .gacha-axis.locked .lk{opacity:1}
+  .gacha-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .gacha-act{border:2px solid #f59e0b;background:#fff;color:#b45309;border-radius:99px;padding:7px 16px;font-size:12.5px;font-weight:800;cursor:pointer;transition:.15s}
+  .gacha-act:hover{background:#fef3c7}
+  .gacha-act.primary{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border-color:transparent}
+  .gacha-act.primary:hover{filter:brightness(1.08)}
+  .gacha-favs{margin-top:14px;border-top:1px dashed #e7e5e4;padding-top:12px}
+  .gacha-favs-ttl{font-size:11.5px;font-weight:800;color:#a8a29e;margin-bottom:8px}
+  .gacha-fav{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e7e5e4;border-radius:99px;padding:4px 6px 4px 12px;font-size:12px;font-weight:700;color:#57534e;margin:0 6px 6px 0}
+  .gacha-fav b{cursor:pointer}
+  .gacha-fav b:hover{color:#b45309}
+  .gacha-fav .del{border:none;background:#f5f5f4;color:#a8a29e;border-radius:50%;width:18px;height:18px;line-height:1;font-size:11px;cursor:pointer}
+  .gacha-fav .del:hover{background:#fecaca;color:#b91c1c}
+  .gacha-hint{font-size:11.5px;color:#a8a29e;margin-top:10px;line-height:1.6}
+  .gacha-act.copy{border-color:#0ea5e9;color:#0369a1}
+  .gacha-act.copy:hover{background:#e0f2fe}
+  .gacha-act.copied{background:#10b981!important;border-color:#10b981!important;color:#fff!important}
+
+  @media(max-width:600px){.gacha-name{font-size:18px}}
+</style>
+<script>
+(function(){
+  'use strict';
+
+  // ── テーマ群（インデックス範囲）──
+  // 0番「画像・写真から抽出」は特殊なのでガチャ対象外
+  const rangeOf = (a, b) => Array.from({length: b - a + 1}, (_, i) => a + i);
+  const CATS = {
+    nature:     rangeOf(1, 16),    // 動物・自然
+    fantasy:    rangeOf(17, 24),   // ファンタジー
+    uk:         rangeOf(25, 34),   // イギリス
+    france:     rangeOf(35, 44),   // フランス
+    italy:      rangeOf(45, 54),   // イタリア
+    usa:        rangeOf(55, 64),   // アメリカ
+    china:      rangeOf(65, 74),   // 中国
+    orient:     rangeOf(75, 84),   // 中東・アフリカ
+    world:      rangeOf(85, 94),   // 世界の名所
+    fairytale:  rangeOf(95, 114),  // 童話
+    mandala:    rangeOf(115, 134), // 曼荼羅・パターン
+    japan:      rangeOf(135, 154), // 日本
+    sweets:     rangeOf(155, 174)  // スイーツ・雑貨
+  };
+
+  // ── 黄金トリオ（テーマ群 × タッチ × 線のスタイル）──
+  // d=難易度プール c=構図プール（構図は 0〜14 の実アングルのみ使用）
+  const TRIOS = [
+    {n:'ゆるかわ動物',        cat:'nature',    to:'ゆるかわ系',          li:'ふんわり太線',        d:[0,1,2], c:[0,3,7],   r:1},
+    {n:'絵本のいきもの',      cat:'nature',    to:'絵本・キッズ',        li:'しっかり太線',        d:[0,1],   c:[0,4,7],   r:1},
+    {n:'精密なボタニカル',    cat:'nature',    to:'リアル系(写実的)',    li:'極細の線',            d:[3,4],   c:[0,7,12],  r:2},
+    {n:'波と富士の版画',      cat:'nature',    to:'浮世絵・和風版画',    li:'筆・毛筆風',          d:[2,3],   c:[5,9,13],  r:2},
+    {n:'ドラゴンの躍動',      cat:'fantasy',   to:'躍動感・アクション',  li:'Gペン風(強弱)',       d:[3,4],   c:[4,6,9],   r:2},
+    {n:'妖精のゆめかわ',      cat:'fantasy',   to:'夢かわ・ゆめかわ',    li:'繊細な細線',          d:[2,3],   c:[0,3,7],   r:1},
+    {n:'魔法使いのゴシック',  cat:'fantasy',   to:'ダーク・ゴシック',    li:'ベタ(黒塗り)多め',    d:[3,4],   c:[0,4,6],   r:3},
+    {n:'ユニコーンのきらめき',cat:'fantasy',   to:'キラキラ・輝き',      li:'サインペン風',        d:[1,2],   c:[0,1,4],   r:1},
+    {n:'ロンドンの街角',      cat:'uk',        to:'アンティーク・退廃',  li:'ミリペン風(均一)',    d:[3,4],   c:[9,11,13], r:2},
+    {n:'名探偵の影',          cat:'uk',        to:'ドラマチック',        li:'ハッチング(斜線)',    d:[3,4],   c:[1,6,7],   r:3},
+    {n:'パリのカフェ',        cat:'france',    to:'エレガント・上品',    li:'万年筆風',            d:[2,3],   c:[0,9,11],  r:1},
+    {n:'ロココのドレス',      cat:'france',    to:'アール・ヌーヴォー',  li:'カリグラフィー風',    d:[3,4],   c:[0,3,4],   r:3},
+    {n:'イタリアの休日',      cat:'italy',     to:'ふんわり・柔らか',    li:'色鉛筆風の線',        d:[1,2],   c:[0,9,13],  r:1},
+    {n:'ベネチアの仮面',      cat:'italy',     to:'大正ロマン',          li:'カブラペン風',        d:[3,4],   c:[0,3,7],   r:3},
+    {n:'アメリカンレトロ',    cat:'usa',       to:'昭和レトロ',          li:'クレヨン風',          d:[1,2],   c:[0,4,9],   r:2},
+    {n:'摩天楼のシャープ',    cat:'usa',       to:'シャープ・鋭い',      li:'カクカクした直線',    d:[2,3],   c:[6,9,13],  r:2},
+    {n:'中華の水墨',          cat:'china',     to:'浮世絵・和風版画',    li:'筆・毛筆風',          d:[2,3],   c:[0,11,13], r:2},
+    {n:'龍舞のカオス',        cat:'china',     to:'カオス・混沌',        li:'ラフ・重ね描き',      d:[3,4],   c:[6,9,14],  r:3},
+    {n:'砂漠のオリエンタル',  cat:'orient',    to:'オリエンタル・中華',  li:'うねる曲線',          d:[2,3],   c:[0,9,13],  r:2},
+    {n:'モスクの幾何学',      cat:'orient',    to:'幾何学的・整然',      li:'ミリペン風(均一)',    d:[3,4],   c:[0,10,12], r:3},
+    {n:'世界の名所めぐり',    cat:'world',     to:'静寂・落ち着き',      li:'標準・普通の線',      d:[2],     c:[9,11,13], r:1},
+    {n:'北欧のフォーク',      cat:'world',     to:'北欧風・フォーク',    li:'木炭・チョーク風',    d:[1,2],   c:[0,10,11], r:2},
+    {n:'アリスの不思議',      cat:'fairytale', to:'だまし絵・錯視',      li:'うねる曲線',          d:[3,4],   c:[5,9,14],  r:3},
+    {n:'童話のえほん',        cat:'fairytale', to:'絵本・キッズ',        li:'ふんわり太線',        d:[0,1],   c:[0,3,4],   r:1},
+    {n:'眠り姫のエレガンス',  cat:'fairytale', to:'エレガント・上品',    li:'繊細な細線',          d:[3,4],   c:[0,1,4],   r:2},
+    {n:'海賊のアメコミ',      cat:'fairytale', to:'アメコミ風',          li:'Gペン風(強弱)',       d:[2,3],   c:[4,6,9],   r:2},
+    {n:'曼荼羅の瞑想',        cat:'mandala',   to:'ミニマル・余白',      li:'極細の線',            d:[3,4],   c:[0,10,12], r:2},
+    {n:'万華鏡の幾何学',      cat:'mandala',   to:'幾何学的・整然',      li:'カクカクした直線',    d:[4],     c:[0,10],    r:3},
+    {n:'硝子絵の曼荼羅',      cat:'mandala',   to:'ステンドグラス風',    li:'しっかり太線',        d:[2,3],   c:[0,10],    r:2},
+    {n:'ケルトの結び',        cat:'mandala',   to:'中世ヨーロッパ',      li:'ハッチング(斜線)',    d:[3,4],   c:[0,10,12], r:3},
+    {n:'花の曼荼羅',          cat:'mandala',   to:'ゆるかわ系',          li:'標準・普通の線',      d:[1,2],   c:[0,10],    r:1},
+    {n:'京都の静寂',          cat:'japan',     to:'静寂・落ち着き',      li:'万年筆風',            d:[2,3],   c:[9,11,13], r:1},
+    {n:'花魁の大正ロマン',    cat:'japan',     to:'大正ロマン',          li:'筆・毛筆風',          d:[3,4],   c:[0,3,4],   r:2},
+    {n:'妖の九尾',            cat:'japan',     to:'ホラー・不気味',      li:'ベタ(黒塗り)多め',    d:[3,4],   c:[1,6,7],   r:3},
+    {n:'夏祭りのゆるかわ',    cat:'japan',     to:'ゆるかわ系',          li:'クレヨン風',          d:[0,1],   c:[0,4,9],   r:1},
+    {n:'スイーツのゆめかわ',  cat:'sweets',    to:'夢かわ・ゆめかわ',    li:'サインペン風',        d:[1,2],   c:[0,7,12],  r:1},
+    {n:'雑貨のアンティーク',  cat:'sweets',    to:'アンティーク・退廃',  li:'鉛筆スケッチ風',      d:[2,3],   c:[0,7,12],  r:2},
+    {n:'ドット絵のごはん',    cat:'sweets',    to:'レトロゲーム(ドット)',li:'ドット・点描',        d:[2,3],   c:[0,7,10],  r:3}
+  ];
+
+
+  const PREFIX = ['しずかな','きらめく','ちいさな','とおい','あかるい','ふかい','やわらかな','凛とした','ゆめみる','ひそやかな','はてしない','あざやかな'];
+
+  const LOCK_KEYS = [
+    {k:'theme',      label:'テーマ'},
+    {k:'touch',      label:'タッチ'},
+    {k:'linestyle',  label:'線'},
+    {k:'difficulty', label:'難易度'}
+  ];
+
+  let locks = {}, lastTrio = null, inGacha = false;
+  const FAV_KEY = 'lineart-gacha-favs';
+
+  const step = (k) => (typeof ALL_STEPS !== 'undefined') ? ALL_STEPS.find(s => s.key === k) : null;
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  function setIdx(key, idx){
+    const st = step(key); if (!st || !st.options || !st.options[idx]) return;
+    selections[key] = { ...st.options[idx], _idx: idx };
+  }
+  function setByLabel(key, label){
+    const st = step(key); if (!st || !st.options || !st.options.length) return;
+    let i = st.options.findIndex(o => o.label === label);
+    if (i < 0) i = Math.floor(Math.random() * st.options.length);
+    setIdx(key, i);
+  }
+  function pickIdx(key, pool){
+    const st = step(key); if (!st || !st.options || !st.options.length) return;
+    const safe = (pool || []).filter(i => st.options[i]);
+    setIdx(key, safe.length ? pick(safe) : Math.floor(Math.random() * st.options.length));
+  }
+  const labelOf = (k) => (selections[k] && selections[k].label) || '';
+
+  function drawTrio(){
+    const bag = [];
+    TRIOS.forEach(t => { const w = 4 - (t.r || 1); for (let i = 0; i < w; i++) bag.push(t); });
+    return pick(bag);
+  }
+
+  function gacha(){
+    const keepAll = locks.theme && locks.touch && locks.linestyle && lastTrio;
+    const trio = keepAll ? lastTrio : drawTrio();
+    lastTrio = trio;
+
+    // テーマは「群」の中からランダム（同じレシピでも毎回モチーフが変わる）
+    if (!locks.theme)      pickIdx('theme', CATS[trio.cat] || CATS.nature);
+    if (!locks.touch)      setByLabel('touch',     trio.to);
+    if (!locks.linestyle)  setByLabel('linestyle', trio.li);
+    if (!locks.difficulty) pickIdx('difficulty',   trio.d);
+
+    pickIdx('composition', trio.c);
+    // ツールは「好み」ではなく「使える環境」。選ばれていれば尊重する
+    if (!selections['tool']) pickIdx('tool', [0,0,1,2,3,4]);
+
+    inGacha = true;
+    if (typeof stepExtras !== 'undefined') stepExtras = {};
+    try { if (typeof renderAll === 'function') renderAll(); } catch(e){ console.warn('renderAll skipped:', e); }
+    if (typeof showResult === 'function') showResult();
+    inGacha = false;
+    renderPanel(trio);
+  }
+
+  // 2026-09-22：テーマは群の中からランダムに選ばれるため、トリオ名（例：ロココのドレス）だと
+  // 実際のテーマ（例：凱旋門）とずれることがあった。レシピ名は実際に選ばれたテーマから作る。
+  const recipeName = (trio) => pick(PREFIX) + '・' + (labelOf('theme') || trio.n);
+
+  function renderPanel(trio, forcedName){
+    const host = document.getElementById('resultScreen');
+    if (!host) return;
+    let el = document.getElementById('gachaPanel');
+    if (!el) { el = document.createElement('div'); el.id = 'gachaPanel'; el.className = 'gacha-panel'; host.insertBefore(el, host.firstChild); }
+    el.style.display = 'block';
+    const name = forcedName || recipeName(trio);
+    el.dataset.name = name;
+    const r = trio.r || 1;
+    const stars = '★'.repeat(r) + '☆'.repeat(3 - r);
+    const axes = LOCK_KEYS.map(a => {
+      const on = locks[a.k] ? ' locked' : '';
+      return `<span class="gacha-axis${on}" onclick="__gachaToggleLock('${a.k}')"><span class="lk">${locks[a.k] ? '🔒' : '🔓'}</span>${a.label}：${labelOf(a.k) || '—'}</span>`;
+    }).join('');
+    el.innerHTML = `
+      <div><span class="gacha-name">${name}</span><span class="gacha-rarity">${stars}</span></div>
+      <div class="gacha-sub">${r >= 3 ? '✨ レアな組み合わせを引きました' : 'テーマ群 × タッチ × 線 の相性で組んだレシピです'}</div>
+      <div class="gacha-axes">${axes}</div>
+      <div class="gacha-actions">
+        <button class="gacha-act primary" onclick="__gachaRoll()">🎰 もう一度ガチャる</button>
+        <button class="gacha-act copy" id="gachaCopyBtn" onclick="__gachaCopyMain()">📋 プロンプトをコピー</button>
+        <button class="gacha-act" onclick="__gachaSave()">☆ このレシピを保存</button>
+      </div>
+      <div class="gacha-favs" id="gachaFavs"></div>
+      <div class="gacha-hint">同じレシピでもテーマは群の中から毎回変わります。テーマだけ気に入ったら 🔒 で固定して、線やタッチを引き直せます。</div>
+    `;
+    renderFavs();
+  }
+
+  const loadFavs = () => { try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch(e){ return []; } };
+  const saveFavs = (l) => { try { localStorage.setItem(FAV_KEY, JSON.stringify(l.slice(0,30))); } catch(e){} };
+
+  function renderFavs(){
+    const box = document.getElementById('gachaFavs'); if (!box) return;
+    const list = loadFavs();
+    if (!list.length) { box.innerHTML = '<div class="gacha-favs-ttl">☆ 保存したレシピはここに並びます</div>'; return; }
+    box.innerHTML = '<div class="gacha-favs-ttl">☆ 保存したレシピ（クリックで呼び出し）</div>' +
+      list.map((f,i) => `<span class="gacha-fav"><b onclick="__gachaLoad(${i})">${f.name}</b><button class="del" onclick="__gachaDel(${i})">×</button></span>`).join('');
+  }
+
+  const SAVE_KEYS = ['theme','difficulty','linestyle','composition','touch','tool'];
+
+  window.__gachaCopyMain = function(){
+    const el = document.getElementById('mainPrompt');
+    const btn = document.getElementById('gachaCopyBtn');
+    if (!el) return;
+    const done = () => { if (!btn) return; const o = btn.textContent;
+      btn.textContent = '✓ コピーしました'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = o; btn.classList.remove('copied'); }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.textContent).then(done).catch(done);
+    else done();
+  };
+
+  window.__gachaRoll = gacha;
+  window.__gachaToggleLock = function(k){ locks[k] = !locks[k]; if (lastTrio) renderPanel(lastTrio, document.getElementById('gachaPanel')?.dataset.name); };
+  window.__gachaSave = function(){
+    if (!lastTrio) return;
+    const el = document.getElementById('gachaPanel');
+    const sel = {}; SAVE_KEYS.forEach(k => { if (labelOf(k)) sel[k] = labelOf(k); });
+    const list = loadFavs();
+    list.unshift({ name:(el && el.dataset.name) || lastTrio.n, trio:lastTrio.n, sel });
+    saveFavs(list); renderFavs();
+    if (typeof showThemeToast === 'function') showThemeToast('保存しました：' + list[0].name);
+  };
+  window.__gachaDel = function(i){ const l = loadFavs(); l.splice(i,1); saveFavs(l); renderFavs(); };
+  window.__gachaLoad = function(i){
+    const f = loadFavs()[i]; if (!f) return;
+    SAVE_KEYS.forEach(k => { if (f.sel[k]) setByLabel(k, f.sel[k]); });
+    lastTrio = TRIOS.find(t => t.n === f.trio) || lastTrio;
+    inGacha = true;
+    try { if (typeof renderAll === 'function') renderAll(); } catch(e){}
+    if (typeof showResult === 'function') showResult();
+    inGacha = false;
+    if (lastTrio) renderPanel(lastTrio, f.name);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const hidePanel = () => { const p = document.getElementById('gachaPanel'); if (p) p.style.display = 'none'; };
+    if (typeof window.restart === 'function') {
+      const _r = window.restart;
+      window.restart = function(){ lastTrio = null; locks = {}; hidePanel(); return _r.apply(this, arguments); };
+    }
+    if (typeof window.showResult === 'function') {
+      const _s = window.showResult;
+      window.showResult = function(){ const r = _s.apply(this, arguments); if (!inGacha) hidePanel(); return r; };
+    }
+  });
+})();
+</script>
+</body>
+</html>
