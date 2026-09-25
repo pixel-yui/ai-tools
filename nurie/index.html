@@ -6,17 +6,22 @@
   <title>線画・ぬりえビルダー | ステップ式プロンプトビルダー</title>
   <style>
     :root {
-      --bg: #f8fafc;
+      --bg: #f8f8fb;
       --panel: #ffffff;
-      --panel-soft: #f1f5f9;
-      --border: #e2e8f0;
-      --ink: #1e293b;
-      --ink-soft: #64748b;
-      --accent: #6366f1;
-      --accent-soft: #eef2ff;
-      --accent-hover: #4f46e5;
-      --radius: 12px;
-      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --panel-soft: #e9f6ef;
+      --border: #e6e6ec;
+      --ink: #26262e;
+      --ink-soft: #7b7b88;
+      --accent: #3f9e6d;
+      --accent-soft: #e9f6ef;
+      --accent-hover: #338159;
+      --radius: 16px;
+      --shadow: 0 2px 8px rgba(0,0,0,.07);
+      --grad: linear-gradient(135deg,#3f9e6d 0%, #8fce7a 100%);
+      --glow: rgba(63,158,109,.18);
+      --glow-strong: rgba(63,158,109,.34);
+      --gacha: linear-gradient(135deg,#f6a23c 0%, #f1655f 100%);
+      --gacha-glow: rgba(241,101,95,.34);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -2217,5 +2222,78 @@ window.clearStepSelection = function(stepKey, btn) {
   });
 })();
 </script>
+<style>
+/* ===== 押したくなるUI 共通 ===== */
+.option-card{
+  border:1.5px solid var(--border)!important;
+  border-radius:16px!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 10px rgba(0,0,0,.05)!important;
+  transition:transform .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s, border-color .16s!important;
+  padding:16px 14px 15px!important;
+}
+.option-card:hover{
+  transform:translateY(-4px)!important;
+  border-color:var(--accent)!important;
+  background:var(--panel)!important;
+  box-shadow:0 2px 4px rgba(0,0,0,.05), 0 14px 26px var(--glow)!important;
+}
+.option-card:active{ transform:translateY(-1px) scale(.99)!important; }
+.option-emoji{
+  display:inline-flex!important; align-items:center; justify-content:center;
+  width:46px; height:46px; border-radius:50%;
+  background:var(--accent-soft); font-size:24px!important; margin-bottom:10px!important;
+  transition:transform .16s, background .16s;
+}
+.option-card:hover .option-emoji{ transform:scale(1.08) rotate(-4deg); }
+.option-card.selected{
+  background:var(--grad)!important; border-color:transparent!important;
+  box-shadow:0 6px 18px var(--glow-strong)!important;
+}
+.option-card.selected .option-label,
+.option-card.selected .option-desc{ color:#fff!important; }
+.option-card.selected .option-emoji{ background:rgba(255,255,255,.28); }
+.option-card.selected::after{
+  width:24px!important; height:24px!important; font-size:13px!important;
+  background:#fff!important; color:var(--accent)!important;
+  box-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+
+/* カテゴリのタブ（ピル） */
+.step-subtab-btn{
+  border-radius:999px!important; padding:8px 16px!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.04)!important;
+  transition:transform .14s, box-shadow .14s, background .14s!important;
+}
+.step-subtab-btn:hover{ transform:translateY(-2px)!important; box-shadow:0 5px 12px var(--glow)!important; }
+.step-subtab-btn.active{
+  background:var(--grad)!important; border-color:transparent!important; color:#fff!important;
+  box-shadow:0 4px 12px var(--glow-strong)!important;
+}
+
+/* 次へ／戻る */
+.btn{ border-radius:999px!important; }
+.btn-next{
+  background:var(--grad)!important; border:none!important;
+  box-shadow:0 4px 14px var(--glow-strong)!important;
+  padding:14px 34px!important; letter-spacing:.02em;
+}
+.btn-next::after{ content:'  →'; font-weight:900; }
+.btn-next:hover{ transform:translateY(-2px)!important; box-shadow:0 8px 22px var(--glow-strong)!important; filter:brightness(1.05); }
+.btn-next:active{ transform:translateY(0)!important; }
+.btn-next:disabled{ background:#e5e7eb!important; color:#a1a1aa!important; box-shadow:none!important; }
+.btn-back,.btn-restart{ border-radius:999px!important; }
+.btn-back:hover,.btn-restart:hover{ transform:translateY(-2px); }
+
+/* ガチャ */
+.btn-random-header{
+  border-radius:999px!important; padding:11px 22px!important;
+  background:var(--gacha)!important; border:none!important; color:#fff!important;
+  box-shadow:0 4px 16px var(--gacha-glow)!important;
+}
+.btn-random-header:hover{ transform:translateY(-2px) scale(1.03)!important; filter:brightness(1.06); box-shadow:0 8px 24px var(--gacha-glow)!important; }
+
+/* サイドバーの進捗 */
+.progress-labels > *{ border-radius:12px!important; }
+</style>
 </body>
 </html>
